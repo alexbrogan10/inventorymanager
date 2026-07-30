@@ -1,0 +1,7 @@
+-r requirements.txt
+
+pytest~=8.3
+pytest-cov~=5.0
+httpx2~=2.9  # required by starlette's TestClient (httpx is deprecated for this)
+ruff~=0.7
+mypy~=1.13
