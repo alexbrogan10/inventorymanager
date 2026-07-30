@@ -178,6 +178,20 @@ the "does an omitted field mean *don't change it* or *clear it*" ambiguity
 partial updates introduce - simpler for both the API and the frontend form,
 which always submits every field anyway.
 
+### Cross-entity foreign key validation (Milestone 4+)
+
+`Product` is the first model with foreign keys to other business entities
+(`category_id`, `supplier_id`). A database-level FK constraint stops garbage
+from ever being persisted, but it fails as a raw `IntegrityError` mid-commit
+with a Postgres-flavored message - not something to hand back to an API
+client. `ProductService` instead depends on `AbstractCategoryRepository`/
+`AbstractSupplierRepository` and checks referenced ids exist *before*
+calling `create`/`update`, raising a typed `InvalidCategoryError`/
+`InvalidSupplierError` the router maps to a clean `422`. The FK constraint
+remains as the actual backstop; the service-layer check exists purely to
+turn "invalid input" into a good error message instead of a database
+exception leaking through.
+
 ## 5. Frontend Architecture
 
 ```
@@ -240,6 +254,19 @@ src/
 - Configuration is via environment variables (`.env`, never committed;
   `.env.example` documents the required keys) — satisfies 12-factor config and
   keeps secrets out of the repository.
+
+### File storage (Milestone 4+)
+
+Product images are written to a local directory (`UPLOAD_DIR`, default
+`backend/uploads/`) and served back via FastAPI's `StaticFiles` at `/static`
+(`app/core/storage.py`). This is the simplest thing that works at
+dev/demo scale, and every caller goes through `save_product_image()`'s
+narrow signature rather than touching the filesystem directly - so swapping
+in S3 (or any object store) later, if this ever needs to run across
+multiple app instances or scale past a single disk, means changing one
+module, not every call site. Uploaded content is validated by declared
+content-type (JPEG/PNG/WebP only) and capped at 5MB before it's ever
+written to disk.
 
 ## 8. Roadmap
 

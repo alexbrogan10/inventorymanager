@@ -34,5 +34,8 @@ Thumbs.db
 *.sqlite3
 *.db
 
+# --- User-uploaded content (local dev storage, see app/core/storage.py) ---
+backend/uploads/
+
 # --- Sample data working files ---
 sample_data/*.tmp
