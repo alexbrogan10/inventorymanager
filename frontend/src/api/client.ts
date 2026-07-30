@@ -5,10 +5,17 @@ import { clearStoredToken, getStoredToken } from './tokenStorage';
 // A single configured Axios instance so every feature module shares base URL,
 // timeout, and auth-token attachment via interceptors, instead of each API
 // file constructing its own client.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1',
+  baseURL: API_BASE_URL,
   timeout: 10_000,
 });
+
+// Uploaded files (product images) are served from the API's origin at
+// /static/..., not under the /api/v1 prefix - derive the origin from the
+// same configured base URL rather than hardcoding it a second time.
+export const apiOrigin = new URL(API_BASE_URL).origin;
 
 apiClient.interceptors.request.use((config) => {
   const token = getStoredToken();

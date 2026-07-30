@@ -1,5 +1,6 @@
 import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import {
   AppBar,
@@ -27,12 +28,18 @@ interface NavItem {
 }
 
 // One entry per top-level section. Populated as each feature milestone adds
-// its own page (products, purchase orders, sales, ...).
+// its own page (purchase orders, sales, ...).
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: <DashboardIcon /> },
+  { label: 'Products', path: '/products', icon: <Inventory2Icon /> },
   { label: 'Categories', path: '/categories', icon: <CategoryIcon /> },
   { label: 'Suppliers', path: '/suppliers', icon: <LocalShippingIcon /> },
 ];
+
+function isNavItemActive(itemPath: string, currentPath: string): boolean {
+  if (itemPath === '/') return currentPath === '/';
+  return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+}
 
 export function MainLayout() {
   const { user, logout } = useAuth();
@@ -78,7 +85,7 @@ export function MainLayout() {
               key={item.path}
               component={Link}
               to={item.path}
-              selected={location.pathname === item.path}
+              selected={isNavItemActive(item.path, location.pathname)}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />

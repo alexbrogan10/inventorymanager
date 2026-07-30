@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed origins for the frontend dev server / deployment.
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
+    # --- File storage ---
+    # Where uploaded files (product images) are written; served at /static.
+    # See app/core/storage.py for why this is local-disk rather than S3.
+    upload_dir: str = "uploads"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
