@@ -1,0 +1,11 @@
+/* MUI's CssBaseline handles resets/typography; this file only sets up the
+   full-height layout the app shell (sidebar + content) depends on. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}

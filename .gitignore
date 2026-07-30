@@ -1,0 +1,38 @@
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# --- Node / Frontend ---
+node_modules/
+dist/
+build/
+.vite/
+frontend/.env
+frontend/coverage/
+
+# --- Docker ---
+*.log
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Alembic (keep versions, ignore local db files) ---
+*.sqlite3
+*.db
+
+# --- Sample data working files ---
+sample_data/*.tmp
