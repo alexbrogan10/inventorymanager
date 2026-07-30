@@ -23,6 +23,18 @@ class Settings(BaseSettings):
 
     # --- Database ---
     database_url: str = "postgresql+psycopg://inventory:inventory@localhost:5432/inventory"
+    # A separate database so the test suite's schema drop/create never touches
+    # real data - see docs/ARCHITECTURE.md's testing strategy.
+    test_database_url: str = (
+        "postgresql+psycopg://inventory:inventory@localhost:5432/inventory_test"
+    )
+
+    # --- Auth ---
+    # Dev-only fallback. Every non-local environment must set a real SECRET_KEY
+    # (e.g. `openssl rand -hex 32`) - anyone who can read this default could
+    # forge access tokens.
+    secret_key: str = "insecure-dev-secret-change-me-00000000000000"
+    access_token_expire_minutes: int = 60
 
     # --- CORS ---
     # Comma-separated list of allowed origins for the frontend dev server / deployment.

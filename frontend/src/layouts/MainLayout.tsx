@@ -2,6 +2,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import {
   AppBar,
   Box,
+  Button,
   Drawer,
   List,
   ListItemButton,
@@ -11,7 +12,9 @@ import {
   Typography,
 } from '@mui/material';
 import type { ReactNode } from 'react';
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useNavigate } from 'react-router';
+
+import { useAuth } from '../features/auth/useAuth';
 
 const DRAWER_WIDTH = 240;
 
@@ -26,13 +29,31 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [{ label: 'Dashboard', path: '/', icon: <DashboardIcon /> }];
 
 export function MainLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
+
   return (
     <Box sx={{ display: 'flex' }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar>
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Typography variant="h6" noWrap component="div">
             Inventory Manager
           </Typography>
+          {user && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2">
+                {user.full_name} · {user.role}
+              </Typography>
+              <Button color="inherit" onClick={handleLogout}>
+                Logout
+              </Button>
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
       <Drawer

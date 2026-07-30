@@ -36,12 +36,24 @@ alembic revision --autogenerate -m "..."  # generate a new migration from model 
 pytest
 ```
 
-`pyproject.toml` enables coverage reporting by default (`--cov=app`).
+Tests run against `TEST_DATABASE_URL` (a separate database from the one the
+app uses in dev - see docs/ARCHITECTURE.md's testing strategy), so it must
+exist first: `createdb inventory_test` (or `CREATE DATABASE inventory_test;`
+via `psql`). `pyproject.toml` enables coverage reporting by default (`--cov=app`).
 
 ## Linting & formatting
 
 ```bash
 ruff check .        # lint
 ruff format .        # format
-mypy app             # type-check
+mypy app tests       # type-check
+```
+
+## Creating an admin account
+
+Public registration (`POST /api/v1/auth/register`) can only create EMPLOYEE
+accounts. To bootstrap the first admin in a fresh environment:
+
+```bash
+python ../scripts/create_superuser.py --email admin@example.com --full-name "Admin User"
 ```
