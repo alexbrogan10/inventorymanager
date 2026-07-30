@@ -7,3 +7,9 @@ alembic~=1.13
 pydantic~=2.9
 pydantic-settings~=2.5
 psycopg[binary]~=3.2
+email-validator~=2.3
+
+# Auth (Milestone 2)
+bcrypt~=5.0
+pyjwt~=2.13
+python-multipart~=0.0.32  # required by FastAPI's OAuth2PasswordRequestForm (form parsing)

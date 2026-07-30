@@ -121,17 +121,43 @@ response without a matching DB column).
 
 ## 4. Authentication & Authorization
 
-- **JWT** access tokens (short-lived) signed with a server-side secret
-  (`python-jose` or `PyJWT`), returned on login.
-- **bcrypt** (via `passlib`) for password hashing — bcrypt is deliberately slow,
-  which is the correct property for password storage.
-- **Role-Based Access Control**: a `role` enum (`admin`, `manager`, `employee`)
-  on the `User` model. FastAPI dependencies (`require_role(...)`) gate routes
-  declaratively, e.g. `Depends(require_role("admin", "manager"))`, keeping
-  authorization checks visible in the route signature rather than buried in
-  handler bodies.
-- Full implementation lands in **Milestone 2**. Milestone 1 only prepares the
-  ground (project structure, config for secrets).
+Implemented in Milestone 2 (`app/core/security.py`, `app/api/deps.py`,
+`app/api/v1/endpoints/auth.py`).
+
+- **JWT** access tokens (`PyJWT`, HS256, 60-minute default expiry), returned
+  from `POST /auth/login`. **bcrypt** (the `bcrypt` package directly) for
+  password hashing.
+  - Deliberately **not** `python-jose`/`passlib`: both wrapper libraries have
+    gone years without a release and have known compatibility issues with
+    modern `cryptography`/`bcrypt` releases. `PyJWT` and `bcrypt` are each
+    maintained and do exactly one job.
+  - The token payload is minimal (`sub` = user id, `exp`); `GET /auth/me`
+    resolves the current user from the DB on every request rather than
+    trusting a cached role in the token, so a role change or deactivation
+    takes effect immediately instead of waiting for the token to expire.
+- **Role-Based Access Control**: a `role` enum (`admin`, `manager`,
+  `employee`) on the `User` model, persisted as its lowercase string value
+  (`values_callable` on the SQLAlchemy `Enum`, not the Python member name) so
+  the database, the JSON API contract, and anything querying the DB directly
+  all agree on the same strings. `Depends(require_roles(UserRole.ADMIN))`
+  gates routes declaratively - authorization is visible in the route
+  signature, not buried in the handler body.
+- **Self-registration always creates an `EMPLOYEE`** - `AuthService.register`
+  ignores any role a client might try to send. `MANAGER`/`ADMIN` accounts can
+  only be created by an admin (once user-management endpoints exist) or, to
+  bootstrap the very first admin in a fresh environment, via
+  `scripts/create_superuser.py`.
+- **Token storage is `localStorage`, read by an Axios request interceptor**
+  (`frontend/src/api/tokenStorage.ts`) - the standard, simplest approach for
+  an SPA talking to a separate API origin. This is a known trade-off (a
+  successful XSS could exfiltrate the token; an httpOnly-cookie + CSRF-token
+  scheme would close that gap at the cost of meaningfully more moving parts)
+  accepted for now and revisited if the project's threat model calls for it.
+- Password-reset is a **placeholder**: `POST /auth/password-reset-request`
+  validates the input shape and always returns the same generic response, so
+  it can't be used to enumerate registered emails - it doesn't send an email
+  yet, since there's no notifications/email infrastructure until a later
+  milestone.
 
 ## 5. Frontend Architecture
 
@@ -170,9 +196,13 @@ src/
   real PostgreSQL instance (a dedicated `inventory_test` database), not SQLite —
   Postgres-specific behavior (enums, constraints, `ON DELETE` rules) must be
   exercised faithfully. Locally this is the `db` service from Docker Compose; in
-  CI it is a Postgres service container. Repository/service separation means
-  business logic can additionally be unit-tested with fake repositories where a
-  real DB isn't needed.
+  CI it is a Postgres service container. The test database's schema is
+  dropped/recreated once per test run (always matching current models
+  exactly), and each individual test runs inside its own transaction that's
+  rolled back afterward (`backend/tests/conftest.py`), so tests never see each
+  other's data without needing per-test schema resets. Repository/service
+  separation means business logic can additionally be unit-tested with fake
+  repositories where a real DB isn't needed (e.g. `tests/test_deps.py`).
 - **Frontend**: React Testing Library + Vitest, colocated with the components
   they test (`Component.test.tsx` next to `Component.tsx`).
 - **Top-level `tests/`** is reserved for cross-cutting end-to-end tests that

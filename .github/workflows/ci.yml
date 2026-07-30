@@ -32,6 +32,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql+psycopg://inventory:inventory@localhost:5432/inventory
+      # A separate database from DATABASE_URL - see docs/ARCHITECTURE.md's
+      # testing strategy. Created by the "Create test database" step below.
+      TEST_DATABASE_URL: postgresql+psycopg://inventory:inventory@localhost:5432/inventory_test
 
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +55,15 @@ jobs:
         run: ruff format --check .
 
       - name: Type-check (mypy)
-        run: mypy app
+        run: mypy app tests
+
+      - name: Create test database
+        run: |
+          python -c "
+          import psycopg
+          conn = psycopg.connect('postgresql://inventory:inventory@localhost:5432/inventory', autocommit=True)
+          conn.execute('CREATE DATABASE inventory_test')
+          "
 
       - name: Run migrations
         run: alembic upgrade head
