@@ -159,6 +159,25 @@ Implemented in Milestone 2 (`app/core/security.py`, `app/api/deps.py`,
   yet, since there's no notifications/email infrastructure until a later
   milestone.
 
+### Applying RBAC to business resources (Milestone 3+)
+
+Every CRUD module (starting with Suppliers/Categories) follows the same
+read/write split: **any authenticated user can read** (`Depends(get_current_user)`),
+**only `manager`/`admin` can write** (`Depends(require_roles(UserRole.ADMIN,
+UserRole.MANAGER))`) - employees can look up data (to do their jobs -
+checking stock, finding a supplier's contact info) but not restructure it.
+The frontend mirrors this by hiding write controls (the "Add" button, edit/delete
+icons) for a logged-in employee, using the same role check the backend
+enforces - this is a UX courtesy (avoid showing buttons that would just 403),
+never the actual security boundary, which is always the backend check.
+
+Update endpoints (`PUT`) are a **full replacement**, not a partial `PATCH`:
+the request body has the same required fields as create. This matches the
+plain `GET`/`POST`/`PUT`/`DELETE` API shape in the project spec and sidesteps
+the "does an omitted field mean *don't change it* or *clear it*" ambiguity
+partial updates introduce - simpler for both the API and the frontend form,
+which always submits every field anyway.
+
 ## 5. Frontend Architecture
 
 ```

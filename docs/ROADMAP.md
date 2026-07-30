@@ -11,7 +11,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 |---|---|---|---|
 | 1 | **Project Foundation & Dev Environment** | Repo structure, FastAPI skeleton, Postgres + Alembic wired up, React/Vite/TS/MUI skeleton, Docker Compose for local dev, CI skeleton (lint + test), linting/formatting config. | ✅ |
 | 2 | **Authentication & Authorization** | `User` model + roles (Admin/Manager/Employee), register/login, JWT issuing & verification, bcrypt hashing, password-reset placeholder, RBAC dependency guards, frontend login/register pages + auth context + protected routes. | ✅ |
-| 3 | **Suppliers & Categories** | First full vertical slice (API + service + repository + frontend CRUD pages) — establishes the template every later module follows. | ⬜ |
+| 3 | **Suppliers & Categories** | First full vertical slice (API + service + repository + frontend CRUD pages) — establishes the template every later module follows. | ✅ |
 | 4 | **Products** | Full product model (SKU, barcode, pricing, quantities, warehouse location, image), CRUD API + validation, product list/detail/form UI. | ⬜ |
 | 5 | **Warehouses & Inventory Transfers** | Multiple warehouse locations, per-warehouse stock levels, transfer-between-warehouses workflow. | ⬜ |
 | 6 | **Purchase Orders** | Create purchase orders, status lifecycle (Ordered → Shipped → Received → Cancelled), receiving a PO increments inventory. | ⬜ |
