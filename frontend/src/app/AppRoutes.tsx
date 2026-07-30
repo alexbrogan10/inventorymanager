@@ -1,8 +1,10 @@
 import { Route, Routes } from 'react-router';
 
-import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
+import { CategoriesPage } from '../features/categories/CategoriesPage';
+import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { SuppliersPage } from '../features/suppliers/SuppliersPage';
 import { MainLayout } from '../layouts/MainLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -19,6 +21,8 @@ export function AppRoutes() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
+        <Route path="suppliers" element={<SuppliersPage />} />
       </Route>
     </Routes>
   );

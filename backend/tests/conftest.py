@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.security import hash_password
 from app.main import app
 from app.models import Base
+from app.models.user import User, UserRole
 
 
 @pytest.fixture(scope="session")
@@ -52,3 +54,32 @@ def client(db_session: Session) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def auth_token_for(client: TestClient, db_session: Session) -> Callable[..., str]:
+    """Creates a user with a given role directly in the DB (bypassing
+    public registration, which can only ever create EMPLOYEE accounts - see
+    app/services/auth_service.py) and returns a valid access token for them,
+    for exercising RBAC-gated endpoints at each role.
+    """
+
+    def _make(
+        role: UserRole = UserRole.EMPLOYEE,
+        email: str = "test.user@example.com",
+        password: str = "hunter22",
+    ) -> str:
+        user = User(
+            email=email,
+            hashed_password=hash_password(password),
+            full_name="Test User",
+            role=role,
+            is_active=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        response = client.post("/api/v1/auth/login", data={"username": email, "password": password})
+        return str(response.json()["access_token"])
+
+    return _make

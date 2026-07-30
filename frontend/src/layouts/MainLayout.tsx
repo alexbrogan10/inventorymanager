@@ -1,4 +1,6 @@
+import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import {
   AppBar,
   Box,
@@ -12,7 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { ReactNode } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { useAuth } from '../features/auth/useAuth';
 
@@ -25,12 +27,17 @@ interface NavItem {
 }
 
 // One entry per top-level section. Populated as each feature milestone adds
-// its own page (products, suppliers, purchase orders, ...).
-const NAV_ITEMS: NavItem[] = [{ label: 'Dashboard', path: '/', icon: <DashboardIcon /> }];
+// its own page (products, purchase orders, sales, ...).
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard', path: '/', icon: <DashboardIcon /> },
+  { label: 'Categories', path: '/categories', icon: <CategoryIcon /> },
+  { label: 'Suppliers', path: '/suppliers', icon: <LocalShippingIcon /> },
+];
 
 export function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   function handleLogout() {
     logout();
@@ -67,7 +74,12 @@ export function MainLayout() {
         <Toolbar />
         <List>
           {NAV_ITEMS.map((item) => (
-            <ListItemButton key={item.path} component={Link} to={item.path}>
+            <ListItemButton
+              key={item.path}
+              component={Link}
+              to={item.path}
+              selected={location.pathname === item.path}
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
             </ListItemButton>
