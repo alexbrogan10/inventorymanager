@@ -68,10 +68,9 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     supplier: SUPPLIER,
     purchase_price: '5.00',
     selling_price: '9.99',
-    current_quantity: 50,
+    total_quantity: 50,
     minimum_quantity: 10,
     maximum_quantity: 200,
-    warehouse_location: null,
     unit_type: 'each',
     image_url: null,
     created_at: '2026-01-01T00:00:00Z',
@@ -115,7 +114,7 @@ describe('ProductsPage', () => {
   it('shows a low stock chip when current quantity is below the minimum', async () => {
     mockAuth(EMPLOYEE);
     mockedProductsApi.listProducts.mockResolvedValue([
-      makeProduct({ current_quantity: 2, minimum_quantity: 10 }),
+      makeProduct({ total_quantity: 2, minimum_quantity: 10 }),
     ]);
 
     renderPage(<ProductsPage />);
@@ -125,7 +124,7 @@ describe('ProductsPage', () => {
 
   it('does not show a low stock chip when quantity is sufficient', async () => {
     mockAuth(EMPLOYEE);
-    mockedProductsApi.listProducts.mockResolvedValue([makeProduct({ current_quantity: 50 })]);
+    mockedProductsApi.listProducts.mockResolvedValue([makeProduct({ total_quantity: 50 })]);
 
     renderPage(<ProductsPage />);
 

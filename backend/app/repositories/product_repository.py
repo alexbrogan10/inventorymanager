@@ -32,10 +32,8 @@ class AbstractProductRepository(Protocol):
         supplier_id: int,
         purchase_price: Decimal,
         selling_price: Decimal,
-        current_quantity: int,
         minimum_quantity: int,
         maximum_quantity: int | None,
-        warehouse_location: str | None,
         unit_type: str,
     ) -> Product: ...
 
@@ -51,10 +49,8 @@ class AbstractProductRepository(Protocol):
         supplier_id: int,
         purchase_price: Decimal,
         selling_price: Decimal,
-        current_quantity: int,
         minimum_quantity: int,
         maximum_quantity: int | None,
-        warehouse_location: str | None,
         unit_type: str,
     ) -> Product: ...
 
@@ -101,10 +97,8 @@ class ProductRepository:
         supplier_id: int,
         purchase_price: Decimal,
         selling_price: Decimal,
-        current_quantity: int,
         minimum_quantity: int,
         maximum_quantity: int | None,
-        warehouse_location: str | None,
         unit_type: str,
     ) -> Product:
         product = Product(
@@ -116,10 +110,8 @@ class ProductRepository:
             supplier_id=supplier_id,
             purchase_price=purchase_price,
             selling_price=selling_price,
-            current_quantity=current_quantity,
             minimum_quantity=minimum_quantity,
             maximum_quantity=maximum_quantity,
-            warehouse_location=warehouse_location,
             unit_type=unit_type,
         )
         self._db.add(product)
@@ -138,10 +130,8 @@ class ProductRepository:
         supplier_id: int,
         purchase_price: Decimal,
         selling_price: Decimal,
-        current_quantity: int,
         minimum_quantity: int,
         maximum_quantity: int | None,
-        warehouse_location: str | None,
         unit_type: str,
     ) -> Product:
         product.sku = sku
@@ -152,10 +142,8 @@ class ProductRepository:
         product.supplier_id = supplier_id
         product.purchase_price = purchase_price
         product.selling_price = selling_price
-        product.current_quantity = current_quantity
         product.minimum_quantity = minimum_quantity
         product.maximum_quantity = maximum_quantity
-        product.warehouse_location = warehouse_location
         product.unit_type = unit_type
         self._db.commit()
         return self._reload(product.id)

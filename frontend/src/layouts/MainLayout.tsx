@@ -2,6 +2,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import WarehouseIcon from '@mui/icons-material/Warehouse';
 import {
   AppBar,
   Box,
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Products', path: '/products', icon: <Inventory2Icon /> },
   { label: 'Categories', path: '/categories', icon: <CategoryIcon /> },
   { label: 'Suppliers', path: '/suppliers', icon: <LocalShippingIcon /> },
+  { label: 'Warehouses', path: '/warehouses', icon: <WarehouseIcon /> },
 ];
 
 function isNavItemActive(itemPath: string, currentPath: string): boolean {

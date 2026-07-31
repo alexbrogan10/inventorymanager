@@ -17,10 +17,8 @@ class ProductCreate(BaseModel):
     supplier_id: int
     purchase_price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
     selling_price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
-    current_quantity: int = Field(default=0, ge=0)
     minimum_quantity: int = Field(default=0, ge=0)
     maximum_quantity: int | None = Field(default=None, ge=0)
-    warehouse_location: str | None = Field(default=None, max_length=255)
     unit_type: str = Field(default="each", min_length=1, max_length=50)
 
     @model_validator(mode="after")
@@ -31,8 +29,9 @@ class ProductCreate(BaseModel):
 
 
 # Same shape as ProductCreate - see CategoryUpdate for why PUT is a full
-# replacement here rather than a partial PATCH-style update. Image upload is
-# a separate endpoint (multipart, not JSON) so image_url isn't settable here.
+# replacement here rather than a partial PATCH-style update. Image upload and
+# stock levels are separate endpoints, so image_url/quantities aren't
+# settable here.
 class ProductUpdate(ProductCreate):
     pass
 
@@ -51,11 +50,12 @@ class ProductRead(BaseModel):
     supplier: SupplierRead
     purchase_price: Decimal
     selling_price: Decimal
-    current_quantity: int
     minimum_quantity: int
     maximum_quantity: int | None
-    warehouse_location: str | None
     unit_type: str
     image_url: str | None
+    # Sum of InventoryLevel.quantity across every warehouse - attached by
+    # ProductRepository after a separate aggregate query, not a mapped column.
+    total_quantity: int
     created_at: datetime
     updated_at: datetime

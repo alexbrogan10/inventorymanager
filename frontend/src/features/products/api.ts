@@ -1,5 +1,5 @@
 import { apiClient } from '../../api/client';
-import type { Product, ProductInput } from './types';
+import type { InventoryLevel, Product, ProductInput } from './types';
 
 export async function listProducts(): Promise<Product[]> {
   const { data } = await apiClient.get<Product[]>('/products');
@@ -31,5 +31,36 @@ export async function uploadProductImage(id: number, file: File): Promise<Produc
   // No explicit Content-Type here - the browser sets multipart/form-data
   // with the correct boundary itself; overriding it manually breaks the upload.
   const { data } = await apiClient.post<Product>(`/products/${id}/image`, formData);
+  return data;
+}
+
+export async function getProductInventory(productId: number): Promise<InventoryLevel[]> {
+  const { data } = await apiClient.get<InventoryLevel[]>(`/products/${productId}/inventory`);
+  return data;
+}
+
+export async function setProductInventoryLevel(
+  productId: number,
+  warehouseId: number,
+  quantity: number,
+): Promise<InventoryLevel[]> {
+  const { data } = await apiClient.put<InventoryLevel[]>(
+    `/products/${productId}/inventory/${warehouseId}`,
+    { quantity },
+  );
+  return data;
+}
+
+export interface TransferInput {
+  from_warehouse_id: number;
+  to_warehouse_id: number;
+  quantity: number;
+}
+
+export async function transferProductInventory(
+  productId: number,
+  input: TransferInput,
+): Promise<InventoryLevel[]> {
+  const { data } = await apiClient.post<InventoryLevel[]>(`/products/${productId}/transfer`, input);
   return data;
 }

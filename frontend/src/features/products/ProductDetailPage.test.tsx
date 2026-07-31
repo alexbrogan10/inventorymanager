@@ -2,21 +2,25 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Category } from '../categories/types';
 import type { Supplier } from '../suppliers/types';
+import * as warehousesApi from '../warehouses/api';
+import type { Warehouse } from '../warehouses/types';
 import type { User } from '../auth/types';
 import { useAuth } from '../auth/useAuth';
 import * as productsApi from './api';
 import { ProductDetailPage } from './ProductDetailPage';
-import type { Product } from './types';
+import type { InventoryLevel, Product } from './types';
 
 vi.mock('../auth/useAuth');
 vi.mock('./api');
+vi.mock('../warehouses/api');
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedApi = vi.mocked(productsApi);
+const mockedWarehousesApi = vi.mocked(warehousesApi);
 
 const MANAGER: User = {
   id: 1,
@@ -60,15 +64,34 @@ const PRODUCT: Product = {
   supplier: SUPPLIER,
   purchase_price: '5.00',
   selling_price: '9.99',
-  current_quantity: 50,
+  total_quantity: 50,
   minimum_quantity: 10,
   maximum_quantity: 200,
-  warehouse_location: null,
   unit_type: 'each',
   image_url: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };
+
+const WAREHOUSE: Warehouse = {
+  id: 1,
+  name: 'Main Warehouse',
+  address: '1 Main St',
+  notes: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
+
+const EAST_WAREHOUSE: Warehouse = {
+  id: 2,
+  name: 'East Warehouse',
+  address: '2 East St',
+  notes: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
+
+const INVENTORY_LEVELS: InventoryLevel[] = [{ warehouse: WAREHOUSE, quantity: 50 }];
 
 function mockAuth(user: User) {
   mockedUseAuth.mockReturnValue({
@@ -95,6 +118,10 @@ function renderDetail() {
 }
 
 describe('ProductDetailPage', () => {
+  beforeEach(() => {
+    mockedApi.getProductInventory.mockResolvedValue(INVENTORY_LEVELS);
+  });
+
   it('renders the product details', async () => {
     mockAuth(EMPLOYEE);
     mockedApi.getProduct.mockResolvedValue(PRODUCT);
@@ -120,7 +147,7 @@ describe('ProductDetailPage', () => {
 
   it('shows a low stock chip when under the minimum quantity', async () => {
     mockAuth(EMPLOYEE);
-    mockedApi.getProduct.mockResolvedValue({ ...PRODUCT, current_quantity: 2 });
+    mockedApi.getProduct.mockResolvedValue({ ...PRODUCT, total_quantity: 2 });
 
     renderDetail();
 
@@ -139,5 +166,77 @@ describe('ProductDetailPage', () => {
 
     await waitFor(() => expect(mockedApi.deleteProduct.mock.calls[0]?.[0]).toBe(1));
     expect(await screen.findByText('Products List')).toBeInTheDocument();
+  });
+
+  it('shows the inventory breakdown by warehouse', async () => {
+    mockAuth(EMPLOYEE);
+    mockedApi.getProduct.mockResolvedValue(PRODUCT);
+
+    renderDetail();
+
+    expect(await screen.findByText('Inventory by warehouse')).toBeInTheDocument();
+    expect(screen.getByText('Main Warehouse')).toBeInTheDocument();
+    expect(screen.getAllByText('50')).toHaveLength(2);
+  });
+
+  it('hides adjust/transfer stock controls for an employee', async () => {
+    mockAuth(EMPLOYEE);
+    mockedApi.getProduct.mockResolvedValue(PRODUCT);
+
+    renderDetail();
+
+    await screen.findByText('Inventory by warehouse');
+    expect(screen.queryByRole('button', { name: /adjust stock/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /transfer stock/i })).not.toBeInTheDocument();
+  });
+
+  it('lets a manager adjust the stock level at a warehouse', async () => {
+    mockAuth(MANAGER);
+    mockedApi.getProduct.mockResolvedValue(PRODUCT);
+    mockedApi.setProductInventoryLevel.mockResolvedValue([{ warehouse: WAREHOUSE, quantity: 75 }]);
+    mockedWarehousesApi.listWarehouses.mockResolvedValue([WAREHOUSE, EAST_WAREHOUSE]);
+    const user = userEvent.setup();
+
+    renderDetail();
+    await user.click(await screen.findByRole('button', { name: /adjust stock/i }));
+    await user.click(await screen.findByLabelText(/warehouse/i));
+    await user.click(await screen.findByRole('option', { name: 'Main Warehouse' }));
+    const quantityField = screen.getByLabelText(/new quantity/i);
+    await user.clear(quantityField);
+    await user.type(quantityField, '75');
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() =>
+      expect(mockedApi.setProductInventoryLevel.mock.calls[0]).toEqual([1, 1, 75]),
+    );
+  });
+
+  it('lets a manager transfer stock between warehouses', async () => {
+    mockAuth(MANAGER);
+    mockedApi.getProduct.mockResolvedValue(PRODUCT);
+    mockedApi.transferProductInventory.mockResolvedValue([
+      { warehouse: WAREHOUSE, quantity: 40 },
+      { warehouse: EAST_WAREHOUSE, quantity: 10 },
+    ]);
+    mockedWarehousesApi.listWarehouses.mockResolvedValue([WAREHOUSE, EAST_WAREHOUSE]);
+    const user = userEvent.setup();
+
+    renderDetail();
+    await user.click(await screen.findByRole('button', { name: /transfer stock/i }));
+    await user.click(await screen.findByLabelText(/from warehouse/i));
+    await user.click(await screen.findByRole('option', { name: /main warehouse/i }));
+    await user.click(screen.getByLabelText(/to warehouse/i));
+    await user.click(await screen.findByRole('option', { name: 'East Warehouse' }));
+    const quantityField = screen.getByLabelText(/^quantity/i);
+    await user.clear(quantityField);
+    await user.type(quantityField, '10');
+    await user.click(screen.getByRole('button', { name: /^transfer$/i }));
+
+    await waitFor(() => expect(mockedApi.transferProductInventory.mock.calls[0]?.[0]).toBe(1));
+    expect(mockedApi.transferProductInventory.mock.calls[0]?.[1]).toEqual({
+      from_warehouse_id: 1,
+      to_warehouse_id: 2,
+      quantity: 10,
+    });
   });
 });
