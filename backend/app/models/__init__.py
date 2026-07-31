@@ -9,6 +9,8 @@ from app.models.category import Category
 from app.models.inventory_level import InventoryLevel
 from app.models.inventory_transfer import InventoryTransfer
 from app.models.product import Product
+from app.models.purchase_order import PurchaseOrder, PurchaseOrderStatus
+from app.models.purchase_order_item import PurchaseOrderItem
 from app.models.supplier import Supplier
 from app.models.user import User, UserRole
 from app.models.warehouse import Warehouse
@@ -19,6 +21,9 @@ __all__ = [
     "InventoryLevel",
     "InventoryTransfer",
     "Product",
+    "PurchaseOrder",
+    "PurchaseOrderItem",
+    "PurchaseOrderStatus",
     "Supplier",
     "User",
     "UserRole",
