@@ -13,7 +13,7 @@ layer that forecasts demand and recommends reorder quantities.
 |---|---|
 | **Backend** | Python 3.13, FastAPI, SQLAlchemy, Alembic, Pydantic, Uvicorn |
 | **AI / ML** | Pandas, scikit-learn (Random Forest, expandable to XGBoost) |
-| **Frontend** | React, TypeScript, Vite, Material UI, React Router, Axios |
+| **Frontend** | React, TypeScript, Vite, Material UI, React Router, Axios, TanStack Query, MUI X Charts |
 | **Database** | PostgreSQL |
 | **Auth** | JWT + bcrypt |
 | **Cache** | Redis (introduced in a later milestone) |
