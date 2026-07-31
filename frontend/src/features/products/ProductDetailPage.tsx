@@ -1,6 +1,7 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import {
   Alert,
   Avatar,
@@ -12,7 +13,14 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  Paper,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,8 +29,18 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router';
 
 import { apiOrigin } from '../../api/client';
 import { useAuth } from '../auth/useAuth';
-import { deleteProduct, getProduct, updateProduct, uploadProductImage } from './api';
+import { AdjustStockDialog } from './AdjustStockDialog';
+import {
+  deleteProduct,
+  getProduct,
+  getProductInventory,
+  setProductInventoryLevel,
+  transferProductInventory,
+  updateProduct,
+  uploadProductImage,
+} from './api';
 import { ProductFormDialog } from './ProductFormDialog';
+import { TransferStockDialog } from './TransferStockDialog';
 import type { ProductInput } from './types';
 
 function DetailField({ label, value }: { label: string; value: string }) {
@@ -44,6 +62,8 @@ export function ProductDetailPage() {
   const canWrite = user?.role === 'admin' || user?.role === 'manager';
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [isAdjustingStock, setIsAdjustingStock] = useState(false);
+  const [isTransferringStock, setIsTransferringStock] = useState(false);
 
   const {
     data: product,
@@ -51,7 +71,15 @@ export function ProductDetailPage() {
     isError,
   } = useQuery({ queryKey: ['products', productId], queryFn: () => getProduct(productId) });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] });
+  const { data: inventoryLevels } = useQuery({
+    queryKey: ['products', productId, 'inventory'],
+    queryFn: () => getProductInventory(productId),
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['products', productId, 'inventory'] });
+  };
   const updateMutation = useMutation({
     mutationFn: (input: ProductInput) => updateProduct(productId, input),
     onSuccess: invalidate,
@@ -66,6 +94,28 @@ export function ProductDetailPage() {
       invalidate();
       navigate('/products');
     },
+  });
+  const adjustStockMutation = useMutation({
+    mutationFn: ({ warehouseId, quantity }: { warehouseId: number; quantity: number }) =>
+      setProductInventoryLevel(productId, warehouseId, quantity),
+    onSuccess: invalidate,
+  });
+  const transferStockMutation = useMutation({
+    mutationFn: ({
+      fromWarehouseId,
+      toWarehouseId,
+      quantity,
+    }: {
+      fromWarehouseId: number;
+      toWarehouseId: number;
+      quantity: number;
+    }) =>
+      transferProductInventory(productId, {
+        from_warehouse_id: fromWarehouseId,
+        to_warehouse_id: toWarehouseId,
+        quantity,
+      }),
+    onSuccess: invalidate,
   });
 
   async function handleSubmit(input: ProductInput, imageFile: File | null) {
@@ -89,7 +139,7 @@ export function ProductDetailPage() {
     return <Alert severity="error">Product not found.</Alert>;
   }
 
-  const isLowStock = product.current_quantity < product.minimum_quantity;
+  const isLowStock = product.total_quantity < product.minimum_quantity;
 
   return (
     <Stack spacing={3}>
@@ -139,18 +189,92 @@ export function ProductDetailPage() {
             <DetailField label="Supplier" value={product.supplier.company_name} />
             <DetailField label="Purchase price" value={`$${product.purchase_price}`} />
             <DetailField label="Selling price" value={`$${product.selling_price}`} />
-            <DetailField label="Current quantity" value={String(product.current_quantity)} />
+            <DetailField label="Total quantity" value={String(product.total_quantity)} />
             <DetailField label="Minimum quantity" value={String(product.minimum_quantity)} />
             <DetailField
               label="Maximum quantity"
               value={product.maximum_quantity != null ? String(product.maximum_quantity) : '—'}
             />
             <DetailField label="Unit type" value={product.unit_type} />
-            <DetailField label="Warehouse location" value={product.warehouse_location ?? '—'} />
             <DetailField label="Description" value={product.description ?? '—'} />
           </Grid>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardContent>
+          <Stack
+            direction="row"
+            sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}
+          >
+            <Typography variant="h6">Inventory by warehouse</Typography>
+            {canWrite && (
+              <Stack direction="row" spacing={1}>
+                <Button size="small" onClick={() => setIsAdjustingStock(true)}>
+                  Adjust Stock
+                </Button>
+                <Button
+                  size="small"
+                  startIcon={<SwapHorizIcon />}
+                  onClick={() => setIsTransferringStock(true)}
+                >
+                  Transfer Stock
+                </Button>
+              </Stack>
+            )}
+          </Stack>
+
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Warehouse</TableCell>
+                  <TableCell align="right">Quantity</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(inventoryLevels?.length ?? 0) === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={2}>
+                      <Typography color="text.secondary">
+                        No stock recorded for this product yet.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {inventoryLevels?.map((level) => (
+                  <TableRow key={level.warehouse.id} hover>
+                    <TableCell>{level.warehouse.name}</TableCell>
+                    <TableCell align="right">{level.quantity}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+
+      {isAdjustingStock && (
+        <AdjustStockDialog
+          currentLevels={inventoryLevels ?? []}
+          onClose={() => setIsAdjustingStock(false)}
+          onSubmit={async (warehouseId, quantity) => {
+            await adjustStockMutation.mutateAsync({ warehouseId, quantity });
+            setIsAdjustingStock(false);
+          }}
+        />
+      )}
+
+      {isTransferringStock && (
+        <TransferStockDialog
+          currentLevels={inventoryLevels ?? []}
+          onClose={() => setIsTransferringStock(false)}
+          onSubmit={async (fromWarehouseId, toWarehouseId, quantity) => {
+            await transferStockMutation.mutateAsync({ fromWarehouseId, toWarehouseId, quantity });
+            setIsTransferringStock(false);
+          }}
+        />
+      )}
 
       {isEditing && (
         <ProductFormDialog

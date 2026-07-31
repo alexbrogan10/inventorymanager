@@ -7,6 +7,7 @@ import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { ProductDetailPage } from '../features/products/ProductDetailPage';
 import { ProductsPage } from '../features/products/ProductsPage';
 import { SuppliersPage } from '../features/suppliers/SuppliersPage';
+import { WarehousesPage } from '../features/warehouses/WarehousesPage';
 import { MainLayout } from '../layouts/MainLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -27,6 +28,7 @@ export function AppRoutes() {
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
+        <Route path="warehouses" element={<WarehousesPage />} />
       </Route>
     </Routes>
   );

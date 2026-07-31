@@ -1,5 +1,5 @@
-"""Product CRUD, plus a dedicated image-upload endpoint. Same read/write
-access split as categories.py and suppliers.py.
+"""Product CRUD, image upload, and per-warehouse inventory (levels + stock
+transfers). Same read/write access split as categories.py and suppliers.py.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
@@ -8,18 +8,27 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_roles
 from app.core.database import get_db
 from app.core.storage import MAX_IMAGE_BYTES, content_type_extension
+from app.models.inventory_level import InventoryLevel
 from app.models.product import Product
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 from app.repositories.category_repository import CategoryRepository
+from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.product_repository import ProductRepository
 from app.repositories.supplier_repository import SupplierRepository
+from app.repositories.warehouse_repository import WarehouseRepository
+from app.schemas.inventory import InventoryLevelRead, SetInventoryLevelRequest, TransferRequest
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
+from app.services.inventory_service import (
+    InsufficientStockError,
+    InventoryService,
+    ProductNotFoundError,
+    WarehouseNotFoundError,
+)
 from app.services.product_service import (
     DuplicateBarcodeError,
     DuplicateSkuError,
     InvalidCategoryError,
     InvalidSupplierError,
-    ProductNotFoundError,
     ProductService,
 )
 
@@ -29,7 +38,16 @@ _can_write = require_roles(UserRole.ADMIN, UserRole.MANAGER)
 
 
 def get_product_service(db: Session = Depends(get_db)) -> ProductService:
-    return ProductService(ProductRepository(db), CategoryRepository(db), SupplierRepository(db))
+    return ProductService(
+        ProductRepository(db),
+        CategoryRepository(db),
+        SupplierRepository(db),
+        InventoryRepository(db),
+    )
+
+
+def get_inventory_service(db: Session = Depends(get_db)) -> InventoryService:
+    return InventoryService(InventoryRepository(db), ProductRepository(db), WarehouseRepository(db))
 
 
 def _reference_error_response(exc: Exception) -> HTTPException:
@@ -143,4 +161,78 @@ async def upload_product_image(
     except ProductNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Product not found."
+        ) from exc
+
+
+@router.get(
+    "/{product_id}/inventory",
+    response_model=list[InventoryLevelRead],
+    dependencies=[Depends(get_current_user)],
+)
+def get_product_inventory(
+    product_id: int, service: InventoryService = Depends(get_inventory_service)
+) -> list[InventoryLevel]:
+    try:
+        return service.list_for_product(product_id)
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found."
+        ) from exc
+
+
+@router.put(
+    "/{product_id}/inventory/{warehouse_id}",
+    response_model=list[InventoryLevelRead],
+    dependencies=[Depends(_can_write)],
+)
+def set_product_inventory_level(
+    product_id: int,
+    warehouse_id: int,
+    payload: SetInventoryLevelRequest,
+    service: InventoryService = Depends(get_inventory_service),
+) -> list[InventoryLevel]:
+    try:
+        service.set_level(product_id, warehouse_id, payload.quantity)
+        return service.list_for_product(product_id)
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found."
+        ) from exc
+    except WarehouseNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Warehouse not found."
+        ) from exc
+
+
+@router.post("/{product_id}/transfer", response_model=list[InventoryLevelRead])
+def transfer_product_inventory(
+    product_id: int,
+    payload: TransferRequest,
+    current_user: User = Depends(_can_write),
+    service: InventoryService = Depends(get_inventory_service),
+) -> list[InventoryLevel]:
+    try:
+        service.transfer(
+            product_id,
+            payload.from_warehouse_id,
+            payload.to_warehouse_id,
+            payload.quantity,
+            current_user.id,
+        )
+        return service.list_for_product(product_id)
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found."
+        ) from exc
+    except WarehouseNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Warehouse not found."
+        ) from exc
+    except InsufficientStockError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Only {exc.available} available at the source warehouse, "
+                f"requested {exc.requested}."
+            ),
         ) from exc

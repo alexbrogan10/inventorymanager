@@ -45,17 +45,11 @@ export function ProductFormDialog({
   const [supplierId, setSupplierId] = useState(initialValue?.supplier_id.toString() ?? '');
   const [purchasePrice, setPurchasePrice] = useState(initialValue?.purchase_price ?? '0.00');
   const [sellingPrice, setSellingPrice] = useState(initialValue?.selling_price ?? '0.00');
-  const [currentQuantity, setCurrentQuantity] = useState(
-    String(initialValue?.current_quantity ?? 0),
-  );
   const [minimumQuantity, setMinimumQuantity] = useState(
     String(initialValue?.minimum_quantity ?? 0),
   );
   const [maximumQuantity, setMaximumQuantity] = useState(
     initialValue?.maximum_quantity != null ? String(initialValue.maximum_quantity) : '',
-  );
-  const [warehouseLocation, setWarehouseLocation] = useState(
-    initialValue?.warehouse_location ?? '',
   );
   const [unitType, setUnitType] = useState(initialValue?.unit_type ?? 'each');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -86,10 +80,8 @@ export function ProductFormDialog({
         supplier_id: Number(supplierId),
         purchase_price: purchasePrice,
         selling_price: sellingPrice,
-        current_quantity: Number(currentQuantity),
         minimum_quantity: Number(minimumQuantity),
         maximum_quantity: maximumQuantity === '' ? null : Number(maximumQuantity),
-        warehouse_location: warehouseLocation || null,
         unit_type: unitType,
       };
       await onSubmit(input, imageFile);
@@ -222,16 +214,6 @@ export function ProductFormDialog({
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
-                  label="Current quantity"
-                  type="number"
-                  value={currentQuantity}
-                  onChange={(e) => setCurrentQuantity(e.target.value)}
-                  required
-                  fullWidth
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
                   label="Minimum quantity"
                   type="number"
                   value={minimumQuantity}
@@ -249,15 +231,7 @@ export function ProductFormDialog({
                   fullWidth
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Warehouse location"
-                  value={warehouseLocation}
-                  onChange={(e) => setWarehouseLocation(e.target.value)}
-                  fullWidth
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   label="Unit type"
                   value={unitType}

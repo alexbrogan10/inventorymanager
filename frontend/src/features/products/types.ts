@@ -1,5 +1,6 @@
 import type { Category } from '../categories/types';
 import type { Supplier } from '../suppliers/types';
+import type { Warehouse } from '../warehouses/types';
 
 export interface Product {
   id: number;
@@ -15,12 +16,14 @@ export interface Product {
   // precision - convert with Number() only where arithmetic/display needs it.
   purchase_price: string;
   selling_price: string;
-  current_quantity: number;
   minimum_quantity: number;
   maximum_quantity: number | null;
-  warehouse_location: string | null;
   unit_type: string;
   image_url: string | null;
+  // Sum of stock across every warehouse (see InventoryLevel on the backend) -
+  // not something you set directly; use setProductInventoryLevel/
+  // transferProductInventory instead.
+  total_quantity: number;
   created_at: string;
   updated_at: string;
 }
@@ -34,9 +37,12 @@ export interface ProductInput {
   supplier_id: number;
   purchase_price: string;
   selling_price: string;
-  current_quantity: number;
   minimum_quantity: number;
   maximum_quantity: number | null;
-  warehouse_location: string | null;
   unit_type: string;
+}
+
+export interface InventoryLevel {
+  warehouse: Warehouse;
+  quantity: number;
 }

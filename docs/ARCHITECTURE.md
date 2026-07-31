@@ -192,6 +192,41 @@ remains as the actual backstop; the service-layer check exists purely to
 turn "invalid input" into a good error message instead of a database
 exception leaking through.
 
+### Multi-warehouse inventory model (Milestone 5+)
+
+`Product.current_quantity`/`warehouse_location` (Milestone 4) modeled stock as
+a single number attached to the product itself, which cannot represent the
+same product sitting in more than one location. Milestone 5 replaces that with
+a proper one-to-many relationship: `Warehouse` (a location), `InventoryLevel`
+(a `product_id`/`warehouse_id` pair with a `quantity`, unique per pair), and
+`InventoryTransfer` (an append-only audit log of stock moved between two
+warehouses, recording who performed it and when).
+
+- **Migration, not just a schema change**: `4038b07d5100_add_warehouses_and_
+  inventory_tracking.py` creates the new tables, then — before dropping the
+  old `products` columns — inserts a "Main Warehouse" and copies every
+  existing `products.current_quantity` into an `inventory_levels` row against
+  it via raw SQL (`op.execute`/`sa.text()`). Existing data is never silently
+  discarded; it's migrated into the new shape as part of the same migration
+  that removes the old columns.
+- **`Product.total_quantity` is a virtual attribute, not a mapped column** —
+  declared only inside an `if TYPE_CHECKING:` block on the model so mypy and
+  Pydantic's `from_attributes` validation both see it as a real attribute,
+  while `ProductService` attaches the actual value at runtime after a
+  `SUM(quantity) GROUP BY product_id` aggregate query
+  (`InventoryRepository.get_totals_for_products`). This keeps "how much total
+  stock does this product have" a read-time aggregation instead of a
+  duplicated, driftable column.
+- **Transfers are the only way to move stock between warehouses** —
+  `InventoryService.transfer()` validates both warehouses and the product
+  exist, checks the source warehouse actually has enough (`InsufficientStock
+  Error`, mapped to `409 Conflict`), decrements the source and increments the
+  destination, and only then writes an `InventoryTransfer` row. Setting a
+  level directly (`PUT /products/{id}/inventory/{warehouse_id}`) is a
+  separate, unaudited operation for initial stocking/corrections; moving
+  stock between two warehouses always goes through the audited transfer path
+  so `transferred_by_id` and the from/to pair are recorded.
+
 ## 5. Frontend Architecture
 
 ```

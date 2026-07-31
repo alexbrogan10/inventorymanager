@@ -63,10 +63,8 @@ def _product_payload(sku: str = "WIDGET-001", **overrides: object) -> dict:
         "description": "A fine widget",
         "purchase_price": "5.00",
         "selling_price": "9.99",
-        "current_quantity": 50,
         "minimum_quantity": 10,
         "maximum_quantity": 200,
-        "warehouse_location": "Aisle 3",
         "unit_type": "each",
     }
     payload.update(overrides)
@@ -150,6 +148,7 @@ class TestCreate:
         assert body["supplier"]["id"] == refs["supplier_id"]
         assert body["selling_price"] == "9.99"
         assert body["image_url"] is None
+        assert body["total_quantity"] == 0
 
     def test_duplicate_sku_conflicts(
         self, client: TestClient, auth_token_for: Callable[..., str], refs: ProductRefs

@@ -119,7 +119,7 @@ export function ProductsPage() {
                 </TableRow>
               )}
               {products.map((product) => {
-                const isLowStock = product.current_quantity < product.minimum_quantity;
+                const isLowStock = product.total_quantity < product.minimum_quantity;
                 return (
                   <TableRow key={product.id} hover>
                     <TableCell padding="checkbox">
@@ -144,7 +144,7 @@ export function ProductsPage() {
                         spacing={1}
                         sx={{ justifyContent: 'flex-end', alignItems: 'center' }}
                       >
-                        <span>{product.current_quantity}</span>
+                        <span>{product.total_quantity}</span>
                         {isLowStock && <Chip label="Low stock" color="warning" size="small" />}
                       </Stack>
                     </TableCell>
