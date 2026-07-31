@@ -8,6 +8,7 @@ import { ProductDetailPage } from '../features/products/ProductDetailPage';
 import { ProductsPage } from '../features/products/ProductsPage';
 import { PurchaseOrderDetailPage } from '../features/purchase-orders/PurchaseOrderDetailPage';
 import { PurchaseOrdersPage } from '../features/purchase-orders/PurchaseOrdersPage';
+import { ReportsPage } from '../features/reports/ReportsPage';
 import { SaleDetailPage } from '../features/sales/SaleDetailPage';
 import { SalesPage } from '../features/sales/SalesPage';
 import { SuppliersPage } from '../features/suppliers/SuppliersPage';
@@ -37,6 +38,7 @@ export function AppRoutes() {
         <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
         <Route path="sales" element={<SalesPage />} />
         <Route path="sales/:id" element={<SaleDetailPage />} />
+        <Route path="reports" element={<ReportsPage />} />
       </Route>
     </Routes>
   );

@@ -13,3 +13,9 @@ email-validator~=2.3
 bcrypt~=5.0
 pyjwt~=2.13
 python-multipart~=0.0.32  # required by FastAPI's OAuth2PasswordRequestForm (form parsing)
+
+# Reports & Export (Milestone 10) - CSV export uses the stdlib `csv` module;
+# openpyxl is the one new dependency, needed for XLSX export. `pandas` is
+# deliberately not added here - it's reserved for Milestone 12's forecasting
+# pipeline so this milestone doesn't front-load an unrelated dependency.
+openpyxl~=3.1
