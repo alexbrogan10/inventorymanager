@@ -261,6 +261,43 @@ with a message naming the attempted action and the current status
   here would either crash serialization or require a second, wasted
   aggregate query just to satisfy a field the line item doesn't need anyway.
 
+### Sales: a single-step deduction, not a lifecycle (Milestone 7+)
+
+`Sale` deliberately has no status field. `PurchaseOrder` needs one because a
+real-world order genuinely passes through separate states over time
+(ordered, then shipped, then received, possibly cancelled first); a sale is
+different - it's recorded at the moment it happens, so creating one and
+deducting inventory for it are the same event, not two steps separated in
+time. Giving `Sale` a status field and a lifecycle service just to mirror
+`PurchaseOrder` would be copying that milestone's shape onto a problem that
+doesn't have it - there's no PUT or DELETE, no ship/receive/cancel actions,
+just `create`, `list`, and `get`.
+
+- **Two-pass validate-then-deduct, not interleaved.** `SaleService.create()`
+  first aggregates the requested quantity per `product_id` across every line
+  (a sale can list the same product twice), then checks every product has
+  enough stock *before* deducting any of them, and only then deducts.
+  `InventoryRepository.set_level()` commits immediately on each call with no
+  surrounding transaction, so validating and deducting in a single
+  interleaved pass could commit a partial deduction before hitting a later
+  line's insufficient-stock failure - this order guarantees either the whole
+  sale is fulfilled or nothing is deducted. Aggregating first also matters
+  by itself: checking two 15-unit lines of the same product independently
+  against 20 in stock would pass both checks even though 30 units are
+  actually needed.
+- **Customer info lives directly on `Sale`, not a separate `Customer`
+  entity.** This system has no customer accounts or repeat-customer lookup
+  to justify a normalized table; "customer tracking" here means capturing
+  who a sale was for, which a few columns on the sale itself already do
+  without unused structure.
+- **`SaleItem.unit_price` snapshots the price at sale time**, the same
+  reasoning as `PurchaseOrderItem.unit_cost`: revenue reporting needs what
+  the customer actually paid, which must not drift if the catalog's
+  `Product.selling_price` changes later. The frontend's create form
+  auto-fills this from the product's current selling price when it's picked,
+  but the field stays editable and the value sent is whatever's in the form,
+  not a live lookup.
+
 ## 5. Frontend Architecture
 
 ```
