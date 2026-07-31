@@ -38,7 +38,11 @@ const EMPTY_ROW: ItemRow = { productId: '', quantityOrdered: '1', unitCost: '0.0
 export function PurchaseOrderFormDialog({ onClose, onSubmit }: PurchaseOrderFormDialogProps) {
   const { data: suppliers } = useQuery({ queryKey: ['suppliers'], queryFn: listSuppliers });
   const { data: warehouses } = useQuery({ queryKey: ['warehouses'], queryFn: listWarehouses });
-  const { data: products } = useQuery({ queryKey: ['products'], queryFn: listProducts });
+  const { data: productsResult } = useQuery({
+    queryKey: ['products', { page_size: 100 }],
+    queryFn: () => listProducts({ page_size: 100 }),
+  });
+  const products = productsResult?.items;
 
   const [supplierId, setSupplierId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');

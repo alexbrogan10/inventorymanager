@@ -1,8 +1,14 @@
 import { apiClient } from '../../api/client';
-import type { InventoryLevel, Product, ProductInput } from './types';
+import type {
+  InventoryLevel,
+  PaginatedProducts,
+  Product,
+  ProductInput,
+  ProductSearchParams,
+} from './types';
 
-export async function listProducts(): Promise<Product[]> {
-  const { data } = await apiClient.get<Product[]>('/products');
+export async function listProducts(params: ProductSearchParams = {}): Promise<PaginatedProducts> {
+  const { data } = await apiClient.get<PaginatedProducts>('/products', { params });
   return data;
 }
 

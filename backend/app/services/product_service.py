@@ -2,9 +2,9 @@ from app.core.storage import save_product_image
 from app.models.product import Product
 from app.repositories.category_repository import AbstractCategoryRepository
 from app.repositories.inventory_repository import AbstractInventoryRepository
-from app.repositories.product_repository import AbstractProductRepository
+from app.repositories.product_repository import AbstractProductRepository, StockStatusFilter
 from app.repositories.supplier_repository import AbstractSupplierRepository
-from app.schemas.product import ProductCreate, ProductUpdate
+from app.schemas.product import PaginatedProducts, ProductCreate, ProductUpdate
 
 
 class ProductNotFoundError(Exception):
@@ -51,8 +51,33 @@ class ProductService:
             product.total_quantity = totals.get(product.id, 0)
         return products
 
-    def list_all(self) -> list[Product]:
-        return self._attach_totals(self._repository.list_all())
+    def search(
+        self,
+        *,
+        query: str | None,
+        category_id: int | None,
+        supplier_id: int | None,
+        warehouse_id: int | None,
+        stock_status: StockStatusFilter | None,
+        min_quantity: int | None,
+        max_quantity: int | None,
+        page: int,
+        page_size: int,
+    ) -> PaginatedProducts:
+        items, total = self._repository.search(
+            query=query,
+            category_id=category_id,
+            supplier_id=supplier_id,
+            warehouse_id=warehouse_id,
+            stock_status=stock_status,
+            min_quantity=min_quantity,
+            max_quantity=max_quantity,
+            page=page,
+            page_size=page_size,
+        )
+        return PaginatedProducts(
+            items=self._attach_totals(items), total=total, page=page, page_size=page_size
+        )
 
     def get(self, product_id: int) -> Product:
         product = self._repository.get_by_id(product_id)

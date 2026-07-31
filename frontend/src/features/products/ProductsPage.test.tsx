@@ -1,29 +1,32 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Category } from '../categories/types';
 import type { Supplier } from '../suppliers/types';
 import * as categoriesApi from '../categories/api';
 import * as suppliersApi from '../suppliers/api';
+import * as warehousesApi from '../warehouses/api';
 import type { User } from '../auth/types';
 import { useAuth } from '../auth/useAuth';
 import * as productsApi from './api';
 import { ProductsPage } from './ProductsPage';
-import type { Product } from './types';
+import type { PaginatedProducts, Product } from './types';
 
 vi.mock('../auth/useAuth');
 vi.mock('./api');
 vi.mock('../categories/api');
 vi.mock('../suppliers/api');
+vi.mock('../warehouses/api');
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedProductsApi = vi.mocked(productsApi);
 const mockedCategoriesApi = vi.mocked(categoriesApi);
 const mockedSuppliersApi = vi.mocked(suppliersApi);
+const mockedWarehousesApi = vi.mocked(warehousesApi);
 
 const MANAGER: User = {
   id: 1,
@@ -79,6 +82,10 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
   };
 }
 
+function makePaginated(items: Product[]): PaginatedProducts {
+  return { items, total: items.length, page: 1, page_size: 20 };
+}
+
 function mockAuth(user: User) {
   mockedUseAuth.mockReturnValue({
     user,
@@ -99,9 +106,13 @@ function renderPage(ui: ReactElement) {
 }
 
 describe('ProductsPage', () => {
+  beforeEach(() => {
+    mockedWarehousesApi.listWarehouses.mockResolvedValue([]);
+  });
+
   it('renders products with category/supplier names', async () => {
     mockAuth(EMPLOYEE);
-    mockedProductsApi.listProducts.mockResolvedValue([makeProduct()]);
+    mockedProductsApi.listProducts.mockResolvedValue(makePaginated([makeProduct()]));
 
     renderPage(<ProductsPage />);
 
@@ -113,9 +124,9 @@ describe('ProductsPage', () => {
 
   it('shows a low stock chip when current quantity is below the minimum', async () => {
     mockAuth(EMPLOYEE);
-    mockedProductsApi.listProducts.mockResolvedValue([
-      makeProduct({ total_quantity: 2, minimum_quantity: 10 }),
-    ]);
+    mockedProductsApi.listProducts.mockResolvedValue(
+      makePaginated([makeProduct({ total_quantity: 2, minimum_quantity: 10 })]),
+    );
 
     renderPage(<ProductsPage />);
 
@@ -124,7 +135,9 @@ describe('ProductsPage', () => {
 
   it('does not show a low stock chip when quantity is sufficient', async () => {
     mockAuth(EMPLOYEE);
-    mockedProductsApi.listProducts.mockResolvedValue([makeProduct({ total_quantity: 50 })]);
+    mockedProductsApi.listProducts.mockResolvedValue(
+      makePaginated([makeProduct({ total_quantity: 50 })]),
+    );
 
     renderPage(<ProductsPage />);
 
@@ -134,7 +147,7 @@ describe('ProductsPage', () => {
 
   it('hides write controls for an employee', async () => {
     mockAuth(EMPLOYEE);
-    mockedProductsApi.listProducts.mockResolvedValue([makeProduct()]);
+    mockedProductsApi.listProducts.mockResolvedValue(makePaginated([makeProduct()]));
 
     renderPage(<ProductsPage />);
 
@@ -144,7 +157,7 @@ describe('ProductsPage', () => {
 
   it('lets a manager create a product', async () => {
     mockAuth(MANAGER);
-    mockedProductsApi.listProducts.mockResolvedValue([]);
+    mockedProductsApi.listProducts.mockResolvedValue(makePaginated([]));
     mockedProductsApi.createProduct.mockResolvedValue(makeProduct({ id: 2 }));
     mockedCategoriesApi.listCategories.mockResolvedValue([CATEGORY]);
     mockedSuppliersApi.listSuppliers.mockResolvedValue([SUPPLIER]);
@@ -152,13 +165,14 @@ describe('ProductsPage', () => {
 
     renderPage(<ProductsPage />);
     await user.click(await screen.findByRole('button', { name: /add product/i }));
-    await user.type(screen.getByLabelText(/^sku/i), 'WIDGET-099');
-    await user.type(screen.getByLabelText(/^name/i), 'New Widget');
-    await user.click(await screen.findByLabelText(/category/i));
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.type(dialog.getByLabelText(/^sku/i), 'WIDGET-099');
+    await user.type(dialog.getByLabelText(/^name/i), 'New Widget');
+    await user.click(await dialog.findByLabelText(/category/i));
     await user.click(await screen.findByRole('option', { name: 'Electronics' }));
-    await user.click(screen.getByLabelText(/supplier/i));
+    await user.click(dialog.getByLabelText(/supplier/i));
     await user.click(await screen.findByRole('option', { name: 'Acme Supply Co.' }));
-    await user.click(screen.getByRole('button', { name: /^save$/i }));
+    await user.click(dialog.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() =>
       expect(mockedProductsApi.createProduct.mock.calls[0]?.[0]).toEqual(
@@ -174,7 +188,7 @@ describe('ProductsPage', () => {
 
   it('lets a manager delete a product after confirming', async () => {
     mockAuth(MANAGER);
-    mockedProductsApi.listProducts.mockResolvedValue([makeProduct()]);
+    mockedProductsApi.listProducts.mockResolvedValue(makePaginated([makeProduct()]));
     mockedProductsApi.deleteProduct.mockResolvedValue(undefined);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
@@ -183,5 +197,44 @@ describe('ProductsPage', () => {
     await user.click(await screen.findByLabelText(/delete widget/i));
 
     await waitFor(() => expect(mockedProductsApi.deleteProduct.mock.calls[0]?.[0]).toBe(1));
+  });
+
+  it('refetches with the selected category filter', async () => {
+    mockAuth(EMPLOYEE);
+    mockedProductsApi.listProducts.mockResolvedValue(makePaginated([makeProduct()]));
+    mockedCategoriesApi.listCategories.mockResolvedValue([CATEGORY]);
+    const user = userEvent.setup();
+
+    renderPage(<ProductsPage />);
+    await screen.findByText('WIDGET-001');
+    await user.click(screen.getByLabelText(/^category$/i));
+    await user.click(await screen.findByRole('option', { name: 'Electronics' }));
+
+    await waitFor(() =>
+      expect(mockedProductsApi.listProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category_id: 1, page: 1 }),
+      ),
+    );
+  });
+
+  it('requests the next page when paginating forward', async () => {
+    mockAuth(EMPLOYEE);
+    mockedProductsApi.listProducts.mockResolvedValue({
+      items: [makeProduct()],
+      total: 50,
+      page: 1,
+      page_size: 20,
+    });
+    const user = userEvent.setup();
+
+    renderPage(<ProductsPage />);
+    await screen.findByText('WIDGET-001');
+    await user.click(screen.getByRole('button', { name: /next page/i }));
+
+    await waitFor(() =>
+      expect(mockedProductsApi.listProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+      ),
+    );
   });
 });

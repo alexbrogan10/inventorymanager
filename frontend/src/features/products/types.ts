@@ -46,3 +46,24 @@ export interface InventoryLevel {
   warehouse: Warehouse;
   quantity: number;
 }
+
+export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+
+export interface ProductSearchParams {
+  q?: string;
+  category_id?: number;
+  supplier_id?: number;
+  warehouse_id?: number;
+  stock_status?: StockStatus;
+  min_quantity?: number;
+  max_quantity?: number;
+  page?: number;
+  page_size?: number;
+}
+
+export interface PaginatedProducts {
+  items: Product[];
+  total: number;
+  page: number;
+  page_size: number;
+}

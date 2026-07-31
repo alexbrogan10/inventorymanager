@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 from decimal import Decimal
 from typing import Self
@@ -6,6 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.category import CategoryRead
 from app.schemas.supplier import SupplierRead
+
+
+class StockStatus(enum.StrEnum):
+    IN_STOCK = "in_stock"
+    LOW_STOCK = "low_stock"
+    OUT_OF_STOCK = "out_of_stock"
 
 
 class ProductCreate(BaseModel):
@@ -59,3 +66,10 @@ class ProductRead(BaseModel):
     total_quantity: int
     created_at: datetime
     updated_at: datetime
+
+
+class PaginatedProducts(BaseModel):
+    items: list[ProductRead]
+    total: int
+    page: int
+    page_size: int

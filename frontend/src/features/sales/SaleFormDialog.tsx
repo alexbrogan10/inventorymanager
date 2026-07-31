@@ -36,7 +36,11 @@ const EMPTY_ROW: ItemRow = { productId: '', quantity: '1', unitPrice: '0.00' };
 
 export function SaleFormDialog({ onClose, onSubmit }: SaleFormDialogProps) {
   const { data: warehouses } = useQuery({ queryKey: ['warehouses'], queryFn: listWarehouses });
-  const { data: products } = useQuery({ queryKey: ['products'], queryFn: listProducts });
+  const { data: productsResult } = useQuery({
+    queryKey: ['products', { page_size: 100 }],
+    queryFn: () => listProducts({ page_size: 100 }),
+  });
+  const products = productsResult?.items;
 
   const [warehouseId, setWarehouseId] = useState('');
   const [customerName, setCustomerName] = useState('');

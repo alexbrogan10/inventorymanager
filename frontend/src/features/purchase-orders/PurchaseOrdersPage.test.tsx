@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { User } from '../auth/types';
 import { useAuth } from '../auth/useAuth';
 import * as productsApi from '../products/api';
-import type { Product } from '../products/types';
+import type { PaginatedProducts, Product } from '../products/types';
 import * as suppliersApi from '../suppliers/api';
 import type { Supplier } from '../suppliers/types';
 import * as warehousesApi from '../warehouses/api';
@@ -153,7 +153,12 @@ describe('PurchaseOrdersPage', () => {
     mockedApi.createPurchaseOrder.mockResolvedValue({ ...SAMPLE_ORDER, id: 2 });
     mockedSuppliersApi.listSuppliers.mockResolvedValue([SUPPLIER]);
     mockedWarehousesApi.listWarehouses.mockResolvedValue([WAREHOUSE]);
-    mockedProductsApi.listProducts.mockResolvedValue([PRODUCT]);
+    mockedProductsApi.listProducts.mockResolvedValue({
+      items: [PRODUCT],
+      total: 1,
+      page: 1,
+      page_size: 100,
+    } satisfies PaginatedProducts);
     const user = userEvent.setup();
 
     renderPage(<PurchaseOrdersPage />);

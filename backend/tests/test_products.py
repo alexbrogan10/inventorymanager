@@ -108,7 +108,11 @@ class TestReadAccess:
         response = client.get(PRODUCTS_URL, headers=_auth_header(token))
 
         assert response.status_code == 200
-        assert response.json() == []
+        body = response.json()
+        assert body["items"] == []
+        assert body["total"] == 0
+        assert body["page"] == 1
+        assert body["page_size"] == 20
 
     def test_get_missing_product_is_404(
         self, client: TestClient, auth_token_for: Callable[..., str]

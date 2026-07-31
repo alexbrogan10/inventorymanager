@@ -2,7 +2,7 @@
 transfers). Same read/write access split as categories.py and suppliers.py.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
@@ -17,7 +17,13 @@ from app.repositories.product_repository import ProductRepository
 from app.repositories.supplier_repository import SupplierRepository
 from app.repositories.warehouse_repository import WarehouseRepository
 from app.schemas.inventory import InventoryLevelRead, SetInventoryLevelRequest, TransferRequest
-from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
+from app.schemas.product import (
+    PaginatedProducts,
+    ProductCreate,
+    ProductRead,
+    ProductUpdate,
+    StockStatus,
+)
 from app.services.inventory_service import (
     InsufficientStockError,
     InventoryService,
@@ -60,9 +66,32 @@ def _reference_error_response(exc: Exception) -> HTTPException:
     )
 
 
-@router.get("", response_model=list[ProductRead], dependencies=[Depends(get_current_user)])
-def list_products(service: ProductService = Depends(get_product_service)) -> list[Product]:
-    return service.list_all()
+@router.get("", response_model=PaginatedProducts, dependencies=[Depends(get_current_user)])
+def list_products(
+    q: str | None = Query(
+        default=None, description="Matches SKU, name, barcode, category, or supplier."
+    ),
+    category_id: int | None = None,
+    supplier_id: int | None = None,
+    warehouse_id: int | None = None,
+    stock_status: StockStatus | None = None,
+    min_quantity: int | None = Query(default=None, ge=0),
+    max_quantity: int | None = Query(default=None, ge=0),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    service: ProductService = Depends(get_product_service),
+) -> PaginatedProducts:
+    return service.search(
+        query=q,
+        category_id=category_id,
+        supplier_id=supplier_id,
+        warehouse_id=warehouse_id,
+        stock_status=stock_status.value if stock_status else None,
+        min_quantity=min_quantity,
+        max_quantity=max_quantity,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/{product_id}", response_model=ProductRead, dependencies=[Depends(get_current_user)])
