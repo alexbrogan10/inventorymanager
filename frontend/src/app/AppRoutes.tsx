@@ -6,6 +6,8 @@ import { CategoriesPage } from '../features/categories/CategoriesPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { ProductDetailPage } from '../features/products/ProductDetailPage';
 import { ProductsPage } from '../features/products/ProductsPage';
+import { PurchaseOrderDetailPage } from '../features/purchase-orders/PurchaseOrderDetailPage';
+import { PurchaseOrdersPage } from '../features/purchase-orders/PurchaseOrdersPage';
 import { SuppliersPage } from '../features/suppliers/SuppliersPage';
 import { WarehousesPage } from '../features/warehouses/WarehousesPage';
 import { MainLayout } from '../layouts/MainLayout';
@@ -29,6 +31,8 @@ export function AppRoutes() {
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="warehouses" element={<WarehousesPage />} />
+        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
       </Route>
     </Routes>
   );

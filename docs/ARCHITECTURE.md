@@ -227,6 +227,40 @@ warehouses, recording who performed it and when).
   stock between two warehouses always goes through the audited transfer path
   so `transferred_by_id` and the from/to pair are recorded.
 
+### Purchase order status lifecycle (Milestone 6+)
+
+`PurchaseOrder` is the first entity in this system whose primary behavior is
+a state machine rather than plain CRUD. `PurchaseOrderStatus` moves strictly
+ORDERED -> SHIPPED -> RECEIVED; CANCELLED is reachable from ORDERED or
+SHIPPED but never from RECEIVED. That lifecycle is enforced entirely in
+`PurchaseOrderService` (`ship`/`receive`/`cancel`, each checking the current
+status before calling `PurchaseOrderRepository.update_status`) rather than as
+a database constraint - an invalid transition needs to become a clean `409`
+with a message naming the attempted action and the current status
+(`InvalidStatusTransitionError`), not a constraint-violation error.
+
+- **No DELETE endpoint.** A purchase order is a business record other
+  systems (accounting, receiving) may reference; CANCELLED is the intentional
+  terminal state for one that shouldn't be acted on further, the same
+  reasoning that makes `InventoryTransfer` append-only.
+- **Receiving is where inventory changes, not creating.** Creating a PO only
+  records intent (nothing is in a warehouse yet); `PurchaseOrderService.
+  receive()` is the one place that calls `InventoryRepository.set_level()`,
+  adding each line's `quantity_ordered` to whatever is already at the order's
+  `warehouse_id` - coordinating the purchase order and inventory repositories
+  the same way `InventoryService.transfer()` already coordinates two
+  inventory levels within one service method. This milestone always receives
+  every line in full; `PurchaseOrderItem.quantity_received` is tracked
+  per-line (not just a boolean on the header) so a future partial-receiving
+  feature has somewhere to record partial progress without a schema change.
+- **Line items use a narrow product summary, not the full `ProductRead`.**
+  `PurchaseOrderItemRead` nests id/sku/name/unit_type only. `ProductRead`
+  requires `total_quantity`, a virtual attribute the product *service*
+  attaches after a separate aggregate query - a `Product` loaded via the
+  purchase order's own eager-load never has it set, so reusing `ProductRead`
+  here would either crash serialization or require a second, wasted
+  aggregate query just to satisfy a field the line item doesn't need anyway.
+
 ## 5. Frontend Architecture
 
 ```

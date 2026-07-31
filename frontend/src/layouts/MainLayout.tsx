@@ -1,3 +1,4 @@
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Categories', path: '/categories', icon: <CategoryIcon /> },
   { label: 'Suppliers', path: '/suppliers', icon: <LocalShippingIcon /> },
   { label: 'Warehouses', path: '/warehouses', icon: <WarehouseIcon /> },
+  { label: 'Purchase Orders', path: '/purchase-orders', icon: <AssignmentIcon /> },
 ];
 
 function isNavItemActive(itemPath: string, currentPath: string): boolean {
