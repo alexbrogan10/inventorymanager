@@ -354,6 +354,48 @@ choices rather than "add a chart library and wire up the obvious defaults":
   where a chart was genuinely the better form (ranking products by a
   magnitude), not for every aggregate value.
 
+### Search, filtering, and pagination (Milestone 9+)
+
+`GET /products` gained cross-entity search, five filters, and pagination
+rather than staying a flat unfiltered list. This is a breaking change to an
+endpoint every other create-flow dropdown (purchase order line items, sale
+line items) already depended on - accepted deliberately rather than adding a
+second, parallel "search" endpoint, because maintaining two ways to list
+products would be the worse ongoing cost. Every caller was updated in the
+same milestone: dropdown consumers now request a single generously-sized
+page (`page_size=100`) and read `.items`, since this catalog is small enough
+that "all of them" and "one large page" are the same thing in practice.
+
+- **The response is always an envelope** (`{items, total, page, page_size}`),
+  never a bare array - even a request with no filters at all returns page 1
+  of the paginated result. A response shape that changed depending on which
+  query parameters were present would need two response models and would
+  make the frontend's data-fetching code branch on request params instead of
+  always reading `.items`.
+- **`stock_status` reuses the exact partition the dashboard already
+  established** (Milestone 8's `out_of_stock` = 0, `low_stock` = 0 <
+  total < minimum, `in_stock` = total >= minimum) - one definition of what
+  "low stock" means, computed the same way everywhere it's asked about,
+  rather than each feature inventing its own threshold.
+- **Filtering searches and eager-loading share one join, via
+  `contains_eager`.** Cross-entity search needs `Category`/`Supplier` joined
+  in explicitly (to filter on `Category.name`/`Supplier.company_name`), and
+  the response needs them eager-loaded for `CategoryRead`/`SupplierRead` -
+  using `joinedload` here as well (as every other product query does) would
+  add a *second*, redundant join to the same tables. `contains_eager` tells
+  SQLAlchemy the already-written join already has what the relationship
+  needs, populating it from there instead.
+- **The total-quantity aggregate is computed once, in a subquery joined into
+  the same search, not fetched separately per product.** `stock_status` and
+  the quantity-range filters all read the same
+  `SUM(quantity) GROUP BY product_id` subquery (coalesced to 0 for products
+  with no inventory rows at all), so a product can't be "low stock" by one
+  filter's math and something else by another's.
+- **Count and page queries share their filter conditions**, built once as a
+  list and applied to two queries with different `SELECT` targets (`COUNT`
+  vs. the full `Product`) - so the reported `total` and the returned `items`
+  can never disagree about which products matched.
+
 ## 5. Frontend Architecture
 
 ```

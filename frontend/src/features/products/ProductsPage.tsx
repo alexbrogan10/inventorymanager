@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
 import {
   Alert,
   Avatar,
@@ -9,6 +10,8 @@ import {
   Chip,
   CircularProgress,
   IconButton,
+  InputAdornment,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -16,7 +19,9 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,7 +29,11 @@ import { useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 
 import { apiOrigin } from '../../api/client';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useAuth } from '../auth/useAuth';
+import { listCategories } from '../categories/api';
+import { listSuppliers } from '../suppliers/api';
+import { listWarehouses } from '../warehouses/api';
 import {
   createProduct,
   deleteProduct,
@@ -33,9 +42,15 @@ import {
   uploadProductImage,
 } from './api';
 import { ProductFormDialog } from './ProductFormDialog';
-import type { Product, ProductInput } from './types';
+import type { Product, ProductInput, StockStatus } from './types';
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; product: Product };
+
+const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
+  in_stock: 'In stock',
+  low_stock: 'Low stock',
+  out_of_stock: 'Out of stock',
+};
 
 export function ProductsPage() {
   const { user } = useAuth();
@@ -43,11 +58,41 @@ export function ProductsPage() {
   const queryClient = useQueryClient();
   const [dialogState, setDialogState] = useState<DialogState | null>(null);
 
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebouncedValue(searchInput, 400);
+  const [categoryId, setCategoryId] = useState('');
+  const [supplierId, setSupplierId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
+  const [stockStatus, setStockStatus] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+
+  const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: listCategories });
+  const { data: suppliers } = useQuery({ queryKey: ['suppliers'], queryFn: listSuppliers });
+  const { data: warehouses } = useQuery({ queryKey: ['warehouses'], queryFn: listWarehouses });
+
+  const searchParams = {
+    q: search || undefined,
+    category_id: categoryId ? Number(categoryId) : undefined,
+    supplier_id: supplierId ? Number(supplierId) : undefined,
+    warehouse_id: warehouseId ? Number(warehouseId) : undefined,
+    stock_status: (stockStatus || undefined) as StockStatus | undefined,
+    page: page + 1,
+    page_size: pageSize,
+  };
+
   const {
-    data: products,
+    data: result,
     isPending,
     isError,
-  } = useQuery({ queryKey: ['products'], queryFn: listProducts });
+  } = useQuery({
+    queryKey: ['products', searchParams],
+    queryFn: () => listProducts(searchParams),
+  });
+
+  function resetToFirstPage() {
+    setPage(0);
+  }
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] });
   const createMutation = useMutation({ mutationFn: createProduct, onSuccess: invalidate });
@@ -77,6 +122,8 @@ export function ProductsPage() {
     }
   }
 
+  const products = result?.items ?? [];
+
   return (
     <Stack spacing={3}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -92,10 +139,100 @@ export function ProductsPage() {
         )}
       </Box>
 
+      <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
+        <TextField
+          label="Search"
+          placeholder="Name, SKU, barcode, category, or supplier"
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            resetToFirstPage();
+          }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+          sx={{ minWidth: 280 }}
+        />
+        <TextField
+          select
+          label="Category"
+          value={categoryId}
+          onChange={(e) => {
+            setCategoryId(e.target.value);
+            resetToFirstPage();
+          }}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {categories?.map((category) => (
+            <MenuItem key={category.id} value={String(category.id)}>
+              {category.name}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="Supplier"
+          value={supplierId}
+          onChange={(e) => {
+            setSupplierId(e.target.value);
+            resetToFirstPage();
+          }}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {suppliers?.map((supplier) => (
+            <MenuItem key={supplier.id} value={String(supplier.id)}>
+              {supplier.company_name}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="Warehouse"
+          value={warehouseId}
+          onChange={(e) => {
+            setWarehouseId(e.target.value);
+            resetToFirstPage();
+          }}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {warehouses?.map((warehouse) => (
+            <MenuItem key={warehouse.id} value={String(warehouse.id)}>
+              {warehouse.name}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="Stock status"
+          value={stockStatus}
+          onChange={(e) => {
+            setStockStatus(e.target.value);
+            resetToFirstPage();
+          }}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {(Object.keys(STOCK_STATUS_LABELS) as StockStatus[]).map((status) => (
+            <MenuItem key={status} value={status}>
+              {STOCK_STATUS_LABELS[status]}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
+
       {isPending && <CircularProgress />}
       {isError && <Alert severity="error">Failed to load products.</Alert>}
 
-      {products && (
+      {result && (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -114,7 +251,9 @@ export function ProductsPage() {
               {products.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={canWrite ? 8 : 7}>
-                    <Typography color="text.secondary">No products yet.</Typography>
+                    <Typography color="text.secondary">
+                      No products match your search and filters.
+                    </Typography>
                   </TableCell>
                 </TableRow>
               )}
@@ -171,6 +310,18 @@ export function ProductsPage() {
               })}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={result.total}
+            page={page}
+            onPageChange={(_event, newPage) => setPage(newPage)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={(event) => {
+              setPageSize(Number(event.target.value));
+              resetToFirstPage();
+            }}
+            rowsPerPageOptions={[10, 20, 50]}
+          />
         </TableContainer>
       )}
 
