@@ -3,6 +3,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import WarehouseIcon from '@mui/icons-material/Warehouse';
 import {
   AppBar,
@@ -38,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Suppliers', path: '/suppliers', icon: <LocalShippingIcon /> },
   { label: 'Warehouses', path: '/warehouses', icon: <WarehouseIcon /> },
   { label: 'Purchase Orders', path: '/purchase-orders', icon: <AssignmentIcon /> },
+  { label: 'Sales', path: '/sales', icon: <PointOfSaleIcon /> },
 ];
 
 function isNavItemActive(itemPath: string, currentPath: string): boolean {

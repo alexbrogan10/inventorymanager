@@ -15,7 +15,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 | 4 | **Products** | Full product model (SKU, barcode, pricing, quantities, warehouse location, image), CRUD API + validation, product list/detail/form UI. | ✅ |
 | 5 | **Warehouses & Inventory Transfers** | Multiple warehouse locations, per-warehouse stock levels, transfer-between-warehouses workflow. | ✅ |
 | 6 | **Purchase Orders** | Create purchase orders, status lifecycle (Ordered → Shipped → Received → Cancelled), receiving a PO increments inventory. | ✅ |
-| 7 | **Sales** | Record sales, automatic inventory deduction, revenue/customer/employee tracking. | ⬜ |
+| 7 | **Sales** | Record sales, automatic inventory deduction, revenue/customer/employee tracking. | ✅ |
 | 8 | **Dashboard** | Aggregation endpoints (inventory value, low/out-of-stock counts, pending orders, recent activity, top sellers) + frontend dashboard with charts. | ⬜ |
 | 9 | **Search & Filtering** | Cross-entity search (product/SKU/barcode/supplier/category) and filters (category/warehouse/supplier/quantity/stock status), with pagination. | ⬜ |
 | 10 | **Reports & Export** | Inventory valuation, sales history, purchase history, product movement, supplier performance reports; CSV/Excel/Power BI export. | ⬜ |
