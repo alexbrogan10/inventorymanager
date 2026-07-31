@@ -396,6 +396,56 @@ that "all of them" and "one large page" are the same thing in practice.
   vs. the full `Product`) - so the reported `total` and the returned `items`
   can never disagree about which products matched.
 
+### Reports & Export (Milestone 10+)
+
+Five reports (`GET /reports/{name}`) are read-only queries over data that
+already exists - no new tables. Each accepts `format=json|csv|xlsx`
+(default `json`); the router deliberately has no single `response_model=`
+per route, since the return type genuinely varies with `format`, and
+forcing one shape would mean either lying about the OpenAPI schema or
+inventing a wrapper type with no purpose beyond satisfying the decorator.
+
+- **"Power BI export" means CSV/XLSX files, not a live connector.** Power BI
+  natively imports both formats, so a file download is a complete, honest
+  answer to the requirement; building and maintaining a Power BI connector
+  (or an OData/streaming-dataset integration) would be a disproportionate
+  amount of infrastructure for a portfolio project's actual reporting needs.
+- **CSV uses the stdlib `csv` module; XLSX adds `openpyxl`** as the one new
+  dependency this milestone introduces - `app/core/export.py` wraps both
+  behind two functions (`to_csv_response`, `to_xlsx_response`) so every
+  report endpoint exports the same way. `pandas` is deliberately *not*
+  brought in here even though it could do both jobs at once: it's reserved
+  for Milestone 12's forecasting pipeline, and pulling it in early to save
+  two small functions would front-load an unrelated milestone's dependency.
+- **Product movement reuses the dashboard's "merge in Python" pattern**
+  (Milestone 8's recent-activity feed) for the same reason: purchase
+  receipts, sales, and transfers are three unrelated tables with nothing to
+  `UNION` on, so `ReportsRepository` fetches each event type separately and
+  `ReportsService` merges them into one `ProductMovementRow` shape and sorts
+  by timestamp. The sort direction is the deliberate difference from that
+  precedent: recent-activity sorts **descending** because a feed is read
+  newest-first, while product movement sorts **ascending** because a ledger
+  is read start-to-end, like a bank statement.
+- **A purchase order's `updated_at` doubles as its receiving timestamp.**
+  There's no separate `received_at` column - `PurchaseOrderService`'s status
+  lifecycle (`ORDERED -> SHIPPED -> RECEIVED`, no further edits once
+  `RECEIVED`) already guarantees a received order's last write *is* the
+  receiving transition, so a second timestamp column would duplicate
+  information the table already holds reliably.
+- **A transfer produces two ledger rows, not one.** `InventoryTransfer` is a
+  single row per movement, but a ledger read from one warehouse's
+  perspective needs a signed quantity - so the service emits a
+  `transfer_out` row (negative, at `from_warehouse`) and a `transfer_in` row
+  (positive, at `to_warehouse`) from each transfer, rather than inventing a
+  two-warehouse row shape only this report would need.
+- **Supplier performance aggregates in Python, not SQL**, grouping every
+  supplier's purchase orders by `supplier_id` after one eager-loaded fetch.
+  The metrics involved (average lead time as a timestamp difference,
+  on-time rate as a conditional ratio over only `RECEIVED` orders with a set
+  `expected_delivery_date`) are awkward to express as portable aggregate SQL
+  and this table is small enough that pulling it into the app and reducing
+  it there is simpler to read and to test than the equivalent query.
+
 ## 5. Frontend Architecture
 
 ```

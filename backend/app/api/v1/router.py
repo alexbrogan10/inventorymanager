@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     health,
     products,
     purchase_orders,
+    reports,
     sales,
     suppliers,
     warehouses,
@@ -28,3 +29,4 @@ api_router.include_router(products.router)
 api_router.include_router(purchase_orders.router)
 api_router.include_router(sales.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(reports.router)

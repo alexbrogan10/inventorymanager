@@ -18,7 +18,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 | 7 | **Sales** | Record sales, automatic inventory deduction, revenue/customer/employee tracking. | ✅ |
 | 8 | **Dashboard** | Aggregation endpoints (inventory value, low/out-of-stock counts, pending orders, recent activity, top sellers) + frontend dashboard with charts. | ✅ |
 | 9 | **Search & Filtering** | Cross-entity search (product/SKU/barcode/supplier/category) and filters (category/warehouse/supplier/quantity/stock status), with pagination. | ✅ |
-| 10 | **Reports & Export** | Inventory valuation, sales history, purchase history, product movement, supplier performance reports; CSV/Excel/Power BI export. | ⬜ |
+| 10 | **Reports & Export** | Inventory valuation, sales history, purchase history, product movement, supplier performance reports; CSV/Excel/Power BI export. | ✅ |
 | 11 | **CSV Data Import** | Bulk product import with validation (required columns, missing values, duplicate SKUs, invalid prices/quantities) and a detailed error report UI. | ⬜ |
 | 12 | **AI Forecasting Pipeline** | Random Forest model for demand forecasting, stock depletion date, and reorder quantity; `/predict` API; confidence score, feature importance, and accuracy surfaced to the frontend. | ⬜ |
 | 13 | **Smart Recommendations** | Built on Milestone 12: reorder suggestions, overstock warnings, slow-moving inventory, seasonal trend detection. | ⬜ |
