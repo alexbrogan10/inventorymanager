@@ -298,6 +298,62 @@ just `create`, `list`, and `get`.
   but the field stays editable and the value sent is whatever's in the form,
   not a live lookup.
 
+### Dashboard aggregation (Milestone 8+)
+
+The dashboard has no model of its own - every number it shows is computed
+from `Product`, `InventoryLevel`, `PurchaseOrder`, and `Sale`/`SaleItem` at
+request time. Rather than spreading these across several small endpoints,
+there's a single `GET /dashboard/summary` returning one `DashboardSummary`:
+one round trip, one loading state on the frontend, and every figure on the
+page is guaranteed to reflect the same instant.
+
+- **`DashboardRepository` issues aggregate SQL directly** (`SUM`, `COUNT`,
+  `GROUP BY`) rather than composing other repositories' CRUD methods -
+  fetching every product and every inventory level into Python to sum them
+  would work but pushes work onto the app that Postgres does better.
+  `DashboardService` still depends on `AbstractDashboardRepository` (a
+  Protocol) like every other service, so it stays unit-testable with a fake
+  repository even though there's only one concrete implementation.
+- **Low-stock and out-of-stock are mutually exclusive by definition**
+  (`0 < total < minimum_quantity` vs. `total == 0`), computed from the same
+  grouped query as `InventoryRepository.get_totals_for_products` conceptually
+  performs, but scoped to counts rather than per-product totals - so the two
+  counters can be summed or shown side by side without double-counting.
+- **Recent activity is a merge, not a join.** Sales and purchase orders share
+  no table to `UNION` against meaningfully (different columns, different
+  domains), so the repository fetches the most recent N of each and the
+  service merges and re-sorts by timestamp in Python. This is the one place
+  in the codebase that assembles a response schema in the service layer
+  instead of returning an ORM instance for the router to serialize - there's
+  no `DashboardSummary` table row to return instead.
+
+### Charting (Milestone 8+)
+
+`@mui/x-charts` is added as an explicit dependency (not in the original
+stack) for the same reason TanStack Query was in Milestone 3: it's the
+narrowest tool that solves the actual problem, and it shares MUI's theme
+rather than bringing a second design system's visual language into one
+dashboard. The top-sellers chart follows a deliberate, non-default set of
+choices rather than "add a chart library and wire up the obvious defaults":
+
+- **Headline numbers are stat tiles, not charts.** Inventory value, product
+  counts, and pending-order counts are each a single current number - a KPI
+  row of stat tiles reads them faster than five one-bar bar charts would.
+- **Stock-health tiles reuse MUI's existing `warning`/`error` palette roles**
+  (the same colors `ProductsPage`'s "Low stock" chip already uses) rather
+  than introducing new hex values for a "status" channel - one semantic
+  meaning, one set of colors, used everywhere it applies.
+- **Top sellers is a single-hue bar chart, not a rainbow one.** It's one
+  series (quantity sold) across nominal categories (product SKUs); giving
+  each bar a different hue would spend the identity channel re-encoding
+  information the bar's height already shows, and a single series needs no
+  legend box - the card's title already says what's plotted.
+- **No pie/donut chart.** Comparing the three stock states as angles is
+  harder to read at a glance than the same three numbers as stat tiles,
+  which the dashboard already shows individually - a chart was only added
+  where a chart was genuinely the better form (ranking products by a
+  magnitude), not for every aggregate value.
+
 ## 5. Frontend Architecture
 
 ```
