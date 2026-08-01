@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   FormControlLabel,
   Paper,
   Stack,
@@ -20,6 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { PageLoading } from '../../components/PageLoading';
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from './api';
 import { NOTIFICATION_TYPE_LABELS, severityToColor } from './severity';
 
@@ -80,7 +80,7 @@ export function NotificationsPage() {
         label="Unread only"
       />
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load notifications.</Alert>}
 
       {result && (

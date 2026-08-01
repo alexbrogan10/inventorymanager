@@ -118,7 +118,12 @@ function renderPage(ui: ReactElement) {
 describe('SalesPage', () => {
   it('renders sales returned by the API with a computed total', async () => {
     mockAuth(EMPLOYEE);
-    mockedApi.listSales.mockResolvedValue([SAMPLE_SALE]);
+    mockedApi.listSales.mockResolvedValue({
+      items: [SAMPLE_SALE],
+      total: 1,
+      page: 1,
+      page_size: 20,
+    });
 
     renderPage(<SalesPage />);
 
@@ -130,7 +135,12 @@ describe('SalesPage', () => {
 
   it('hides the record sale button for an employee', async () => {
     mockAuth(EMPLOYEE);
-    mockedApi.listSales.mockResolvedValue([SAMPLE_SALE]);
+    mockedApi.listSales.mockResolvedValue({
+      items: [SAMPLE_SALE],
+      total: 1,
+      page: 1,
+      page_size: 20,
+    });
 
     renderPage(<SalesPage />);
 
@@ -140,7 +150,7 @@ describe('SalesPage', () => {
 
   it('lets a manager record a sale with an auto-filled unit price', async () => {
     mockAuth(MANAGER);
-    mockedApi.listSales.mockResolvedValue([]);
+    mockedApi.listSales.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 20 });
     mockedApi.createSale.mockResolvedValue({ ...SAMPLE_SALE, id: 2 });
     mockedWarehousesApi.listWarehouses.mockResolvedValue([WAREHOUSE]);
     mockedProductsApi.listProducts.mockResolvedValue({

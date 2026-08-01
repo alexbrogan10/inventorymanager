@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Paper,
   Stack,
   Table,
@@ -20,6 +19,7 @@ import { useMutation } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useRef, useState } from 'react';
 
+import { PageLoading } from '../../components/PageLoading';
 import { downloadImportTemplate, importProducts } from './api';
 import type { ProductImportReport } from './types';
 
@@ -92,7 +92,7 @@ export function ImportPage() {
         </Button>
       </Stack>
 
-      {importMutation.isPending && <CircularProgress />}
+      {importMutation.isPending && <PageLoading />}
       {importMutation.isError && (
         <Alert severity="error">{extractErrorMessage(importMutation.error)}</Alert>
       )}

@@ -125,7 +125,12 @@ function renderPage(ui: ReactElement) {
 describe('PurchaseOrdersPage', () => {
   it('renders purchase orders returned by the API', async () => {
     mockAuth(EMPLOYEE);
-    mockedApi.listPurchaseOrders.mockResolvedValue([SAMPLE_ORDER]);
+    mockedApi.listPurchaseOrders.mockResolvedValue({
+      items: [SAMPLE_ORDER],
+      total: 1,
+      page: 1,
+      page_size: 20,
+    });
 
     renderPage(<PurchaseOrdersPage />);
 
@@ -137,7 +142,12 @@ describe('PurchaseOrdersPage', () => {
 
   it('hides the create button for an employee', async () => {
     mockAuth(EMPLOYEE);
-    mockedApi.listPurchaseOrders.mockResolvedValue([SAMPLE_ORDER]);
+    mockedApi.listPurchaseOrders.mockResolvedValue({
+      items: [SAMPLE_ORDER],
+      total: 1,
+      page: 1,
+      page_size: 20,
+    });
 
     renderPage(<PurchaseOrdersPage />);
 
@@ -149,7 +159,7 @@ describe('PurchaseOrdersPage', () => {
 
   it('lets a manager create a purchase order', async () => {
     mockAuth(MANAGER);
-    mockedApi.listPurchaseOrders.mockResolvedValue([]);
+    mockedApi.listPurchaseOrders.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 20 });
     mockedApi.createPurchaseOrder.mockResolvedValue({ ...SAMPLE_ORDER, id: 2 });
     mockedSuppliersApi.listSuppliers.mockResolvedValue([SUPPLIER]);
     mockedWarehousesApi.listWarehouses.mockResolvedValue([WAREHOUSE]);

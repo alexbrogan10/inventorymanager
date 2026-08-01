@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   IconButton,
   Paper,
   Stack,
@@ -20,6 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { PageLoading } from '../../components/PageLoading';
 import { useAuth } from '../auth/useAuth';
 import { createSupplier, deleteSupplier, listSuppliers, updateSupplier } from './api';
 import { SupplierFormDialog } from './SupplierFormDialog';
@@ -75,7 +75,7 @@ export function SuppliersPage() {
         )}
       </Box>
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load suppliers.</Alert>}
 
       {suppliers && (

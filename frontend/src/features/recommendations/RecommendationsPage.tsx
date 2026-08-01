@@ -3,7 +3,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Paper,
   Stack,
   Table,
@@ -16,6 +15,7 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 
+import { PageLoading } from '../../components/PageLoading';
 import { getRecommendations } from './api';
 import type { SeasonalPattern } from './types';
 
@@ -34,7 +34,7 @@ export function RecommendationsPage() {
     <Stack spacing={3}>
       <Typography variant="h4">Smart Recommendations</Typography>
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load recommendations.</Alert>}
 
       {data && (

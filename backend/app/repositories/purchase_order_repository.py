@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Protocol, TypedDict
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderStatus
@@ -27,7 +27,7 @@ _EAGER_LOAD_OPTIONS = (
 
 
 class AbstractPurchaseOrderRepository(Protocol):
-    def list_all(self) -> list[PurchaseOrder]: ...
+    def list_paginated(self, *, page: int, page_size: int) -> tuple[list[PurchaseOrder], int]: ...
 
     def get_by_id(self, purchase_order_id: int) -> PurchaseOrder | None: ...
 
@@ -51,11 +51,17 @@ class PurchaseOrderRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def list_all(self) -> list[PurchaseOrder]:
+    def list_paginated(self, *, page: int, page_size: int) -> tuple[list[PurchaseOrder], int]:
+        total = self._db.execute(select(func.count(PurchaseOrder.id))).scalar_one()
         query = (
-            select(PurchaseOrder).options(*_EAGER_LOAD_OPTIONS).order_by(PurchaseOrder.id.desc())
+            select(PurchaseOrder)
+            .options(*_EAGER_LOAD_OPTIONS)
+            .order_by(PurchaseOrder.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
         )
-        return list(self._db.execute(query).unique().scalars())
+        items = list(self._db.execute(query).unique().scalars())
+        return items, total
 
     def get_by_id(self, purchase_order_id: int) -> PurchaseOrder | None:
         query = (

@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Divider,
   Grid,
   Stack,
@@ -20,6 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink, useParams } from 'react-router';
 
+import { PageLoading } from '../../components/PageLoading';
 import { useAuth } from '../auth/useAuth';
 import {
   cancelPurchaseOrder,
@@ -80,7 +80,7 @@ export function PurchaseOrderDetailPage() {
   }
 
   if (isPending) {
-    return <CircularProgress />;
+    return <PageLoading />;
   }
 
   if (isError || !order) {

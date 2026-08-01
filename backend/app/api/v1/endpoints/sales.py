@@ -4,7 +4,7 @@ a financial record recorded at a single point in time (see `Sale`'s
 docstring for why it has no status lifecycle either).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
@@ -16,7 +16,7 @@ from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.product_repository import ProductRepository
 from app.repositories.sale_repository import SaleRepository
 from app.repositories.warehouse_repository import WarehouseRepository
-from app.schemas.sale import SaleCreate, SaleRead
+from app.schemas.sale import PaginatedSales, SaleCreate, SaleRead
 from app.services.notification_service import NotificationService
 from app.services.sale_service import (
     InsufficientStockError,
@@ -44,9 +44,13 @@ def get_sale_service(
     )
 
 
-@router.get("", response_model=list[SaleRead], dependencies=[Depends(get_current_user)])
-def list_sales(service: SaleService = Depends(get_sale_service)) -> list[Sale]:
-    return service.list_all()
+@router.get("", response_model=PaginatedSales, dependencies=[Depends(get_current_user)])
+def list_sales(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    service: SaleService = Depends(get_sale_service),
+) -> PaginatedSales:
+    return service.list_paginated(page, page_size)
 
 
 @router.get("/{sale_id}", response_model=SaleRead, dependencies=[Depends(get_current_user)])

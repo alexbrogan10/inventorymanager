@@ -7,7 +7,6 @@ import {
   Alert,
   Card,
   CardContent,
-  CircularProgress,
   Grid,
   List,
   ListItem,
@@ -20,6 +19,7 @@ import {
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useQuery } from '@tanstack/react-query';
 
+import { PageLoading } from '../../components/PageLoading';
 import { useAuth } from '../auth/useAuth';
 import { TrainModelCard } from '../forecasting/TrainModelCard';
 import { getDashboardSummary } from './api';
@@ -45,7 +45,7 @@ export function DashboardPage() {
     <Stack spacing={3}>
       <Typography variant="h4">Dashboard</Typography>
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load dashboard data.</Alert>}
 
       {data && (

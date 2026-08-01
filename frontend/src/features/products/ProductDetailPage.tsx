@@ -10,7 +10,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Divider,
   Grid,
   Paper,
@@ -28,6 +27,7 @@ import { useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router';
 
 import { apiOrigin } from '../../api/client';
+import { PageLoading } from '../../components/PageLoading';
 import { useAuth } from '../auth/useAuth';
 import { ForecastPanel } from '../forecasting/ForecastPanel';
 import { AdjustStockDialog } from './AdjustStockDialog';
@@ -133,7 +133,7 @@ export function ProductDetailPage() {
   }
 
   if (isPending) {
-    return <CircularProgress />;
+    return <PageLoading />;
   }
 
   if (isError || !product) {

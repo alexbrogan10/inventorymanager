@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Paper,
   Stack,
   Table,
@@ -11,6 +10,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   Typography,
 } from '@mui/material';
@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 
+import { PageLoading } from '../../components/PageLoading';
 import { useAuth } from '../auth/useAuth';
 import { createSale, listSales } from './api';
 import { SaleFormDialog } from './SaleFormDialog';
@@ -32,8 +33,17 @@ export function SalesPage() {
   const canWrite = user?.role === 'admin' || user?.role === 'manager';
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
 
-  const { data: sales, isPending, isError } = useQuery({ queryKey: ['sales'], queryFn: listSales });
+  const {
+    data: result,
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: ['sales', { page: page + 1, page_size: pageSize }],
+    queryFn: () => listSales({ page: page + 1, page_size: pageSize }),
+  });
 
   const createMutation = useMutation({
     mutationFn: createSale,
@@ -54,10 +64,10 @@ export function SalesPage() {
         )}
       </Box>
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load sales.</Alert>}
 
-      {sales && (
+      {result && (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -70,14 +80,14 @@ export function SalesPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {sales.length === 0 && (
+              {result.items.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5}>
                     <Typography color="text.secondary">No sales recorded yet.</Typography>
                   </TableCell>
                 </TableRow>
               )}
-              {sales.map((sale) => (
+              {result.items.map((sale) => (
                 <TableRow key={sale.id} hover>
                   <TableCell>
                     <RouterLink to={`/sales/${sale.id}`}>#{sale.id}</RouterLink>
@@ -90,6 +100,18 @@ export function SalesPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={result.total}
+            page={page}
+            onPageChange={(_event, newPage) => setPage(newPage)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50]}
+          />
         </TableContainer>
       )}
 

@@ -47,3 +47,15 @@ export interface PurchaseOrderInput {
   notes: string | null;
   items: PurchaseOrderItemInput[];
 }
+
+export interface PaginatedPurchaseOrders {
+  items: PurchaseOrder[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface PurchaseOrderListParams {
+  page?: number;
+  page_size?: number;
+}

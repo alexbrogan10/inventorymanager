@@ -700,6 +700,43 @@ src/
   milestone — retrofitting theme-aware styling after components are already
   written is significantly more expensive than starting with it.
 
+### Frontend UX Polish (Milestone 15)
+
+- **Theme mode is a small dedicated context (`theme/ThemeModeProvider.tsx`),
+  not folded into `AuthContext` or a prop threaded through every page** -
+  the same context/hook split every other piece of cross-cutting client
+  state in this app uses (`AuthContext`, `NotificationsContext`). It starts
+  by following the OS-level `prefers-color-scheme` (Milestone 1's original
+  default) and only overrides it once the user actually clicks the toggle
+  in the `MainLayout` app bar, at which point the choice is written to
+  `localStorage` and wins over the OS preference on every future visit. A
+  first-time visitor still sees their system's light/dark setting rather
+  than a hardcoded one.
+- **Sales and Purchase Orders moved onto the same `{items, total, page,
+  page_size}` envelope Products and Notifications already use**, rather
+  than staying bare, unpaginated lists. Both resources grow without bound
+  over the life of the business (unlike Categories/Suppliers/Warehouses,
+  small reference-data catalogs that don't need this), so leaving them
+  unpaginated was a genuine scaling gap, not just a visual inconsistency -
+  the fix touches repository (`list_paginated`), schema (`PaginatedSales`/
+  `PaginatedPurchaseOrders`), service, and endpoint layers identically to
+  how Milestone 9 paginated Products.
+- **One shared `PageLoading` component replaces every page's bare
+  `CircularProgress`** - list pages showed an unstyled spinner inline above
+  the table, while detail pages returned a bare spinner as the entire page
+  content with no centering. Both now render the same centered spinner
+  with consistent vertical padding, so a page's loading state looks the
+  same regardless of which pattern (inline conditional vs. early return)
+  the page happens to use internally.
+- **The sidebar drawer is two `Drawer`s, not one made responsive via
+  props** - a permanent one shown at `sm` and above, and a temporary
+  (overlay) one shown below `sm` and toggled by a hamburger button in the
+  app bar. MUI's permanent drawer variant always occupies layout space,
+  which is fine on desktop but would eat most of a phone-width viewport;
+  swapping to a temporary/overlay drawer below a breakpoint is the
+  standard MUI pattern for this, rather than trying to force one `Drawer`
+  instance to behave both ways.
+
 ## 6. Testing Strategy
 
 - **Backend**: pytest, using FastAPI's `TestClient`/`httpx`. Tests run against a

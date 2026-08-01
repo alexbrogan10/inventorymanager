@@ -34,7 +34,11 @@ function renderWithProviders(ui: ReactElement) {
 
 describe('NotificationToasts', () => {
   it('renders nothing when the toast queue is empty', () => {
-    mockedUseNotifications.mockReturnValue({ unreadCount: 0, toastQueue: [], dismissToast: vi.fn() });
+    mockedUseNotifications.mockReturnValue({
+      unreadCount: 0,
+      toastQueue: [],
+      dismissToast: vi.fn(),
+    });
 
     renderWithProviders(<NotificationToasts />);
 

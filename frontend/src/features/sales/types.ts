@@ -44,3 +44,15 @@ export interface SaleInput {
   notes: string | null;
   items: SaleItemInput[];
 }
+
+export interface PaginatedSales {
+  items: Sale[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface SaleListParams {
+  page?: number;
+  page_size?: number;
+}

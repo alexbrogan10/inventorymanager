@@ -5,7 +5,7 @@ from app.repositories.inventory_repository import AbstractInventoryRepository
 from app.repositories.product_repository import AbstractProductRepository
 from app.repositories.sale_repository import AbstractSaleRepository, SaleItemInput
 from app.repositories.warehouse_repository import AbstractWarehouseRepository
-from app.schemas.sale import SaleCreate
+from app.schemas.sale import PaginatedSales, SaleCreate
 from app.services.notification_service import NotificationService
 
 
@@ -53,8 +53,9 @@ class SaleService:
         self._inventory = inventory
         self._notifications = notifications
 
-    def list_all(self) -> list[Sale]:
-        return self._repository.list_all()
+    def list_paginated(self, page: int, page_size: int) -> PaginatedSales:
+        items, total = self._repository.list_paginated(page=page, page_size=page_size)
+        return PaginatedSales(items=items, total=total, page=page, page_size=page_size)
 
     def get(self, sale_id: int) -> Sale:
         sale = self._repository.get_by_id(sale_id)

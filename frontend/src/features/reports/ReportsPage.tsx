@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   MenuItem,
   Stack,
   Tab,
@@ -14,6 +13,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { PageLoading } from '../../components/PageLoading';
 import { listProducts } from '../products/api';
 import {
   downloadReport,
@@ -186,7 +186,7 @@ export function ReportsPage() {
 
       {tab === 'inventory-valuation' && (
         <>
-          {inventoryValuationQuery.isPending && <CircularProgress />}
+          {inventoryValuationQuery.isPending && <PageLoading />}
           {inventoryValuationQuery.isError && (
             <Alert severity="error">Failed to load report.</Alert>
           )}
@@ -198,7 +198,7 @@ export function ReportsPage() {
 
       {tab === 'sales-history' && (
         <>
-          {salesHistoryQuery.isPending && <CircularProgress />}
+          {salesHistoryQuery.isPending && <PageLoading />}
           {salesHistoryQuery.isError && <Alert severity="error">Failed to load report.</Alert>}
           {salesHistoryQuery.data && <SalesHistoryTable report={salesHistoryQuery.data} />}
         </>
@@ -206,7 +206,7 @@ export function ReportsPage() {
 
       {tab === 'purchase-history' && (
         <>
-          {purchaseHistoryQuery.isPending && <CircularProgress />}
+          {purchaseHistoryQuery.isPending && <PageLoading />}
           {purchaseHistoryQuery.isError && <Alert severity="error">Failed to load report.</Alert>}
           {purchaseHistoryQuery.data && <PurchaseHistoryTable report={purchaseHistoryQuery.data} />}
         </>
@@ -219,7 +219,7 @@ export function ReportsPage() {
               Select a product above to view its movement history.
             </Typography>
           )}
-          {productId !== '' && productMovementQuery.isPending && <CircularProgress />}
+          {productId !== '' && productMovementQuery.isPending && <PageLoading />}
           {productMovementQuery.isError && <Alert severity="error">Failed to load report.</Alert>}
           {productId !== '' && productMovementQuery.data && (
             <ProductMovementTable report={productMovementQuery.data} />
@@ -229,7 +229,7 @@ export function ReportsPage() {
 
       {tab === 'supplier-performance' && (
         <>
-          {supplierPerformanceQuery.isPending && <CircularProgress />}
+          {supplierPerformanceQuery.isPending && <PageLoading />}
           {supplierPerformanceQuery.isError && (
             <Alert severity="error">Failed to load report.</Alert>
           )}

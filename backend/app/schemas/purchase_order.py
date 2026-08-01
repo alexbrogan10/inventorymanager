@@ -58,3 +58,10 @@ class PurchaseOrderRead(BaseModel):
     items: list[PurchaseOrderItemRead]
     created_at: datetime
     updated_at: datetime
+
+
+class PaginatedPurchaseOrders(BaseModel):
+    items: list[PurchaseOrderRead]
+    total: int
+    page: int
+    page_size: int

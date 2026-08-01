@@ -55,3 +55,10 @@ class SaleRead(BaseModel):
     items: list[SaleItemRead]
     created_at: datetime
     updated_at: datetime
+
+
+class PaginatedSales(BaseModel):
+    items: list[SaleRead]
+    total: int
+    page: int
+    page_size: int
