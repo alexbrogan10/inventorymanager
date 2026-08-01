@@ -27,7 +27,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 | 16 | **Testing Hardening** | Close gaps to reach 80%+ backend coverage; component + API test coverage on the frontend. | ✅ |
 | 17 | **Full Dockerization** | Production-shaped Docker Compose (backend, frontend, Postgres, Redis), multi-stage builds, environment variable audit. | ✅ |
 | 18 | **CI/CD** | GitHub Actions: test, lint, format checks on every PR; build check for both services. | ✅ |
-| 19 | **Documentation Suite** | Final README, API docs, ER diagram, installation/developer/deployment guides, future roadmap write-up. | ⬜ |
+| 19 | **Documentation Suite** | Final README, API docs, ER diagram, installation/developer/deployment guides, future roadmap write-up. | ✅ |
 
 ## Why this order
 
@@ -52,3 +52,25 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
 Each milestone will end with a summary of exactly what to `git commit`, and a
 realistic commit message, before moving to the next one.
+
+## Beyond Milestone 19
+
+Milestone 19 completes the originally-planned scope. What follows are gaps
+and extensions identified along the way — deliberately deferred because they
+either aren't needed at this project's current scale or belong to a
+different problem than the one each milestone was solving, not because
+they were missed by accident.
+
+| Idea | Why it's not already done |
+|---|---|
+| **Real password reset** | `POST /auth/password-reset-request` is a placeholder today (see `app/api/v1/endpoints/auth.py`) — it validates the request and returns a generic response, but sends no email and issues no reset token. Needs an email-sending integration, which nothing in this stack currently provides. |
+| **"Promote user" endpoint** | Creating an `admin`/`manager` account beyond the first one currently means either running `scripts/create_superuser.py` again or editing the `users` table directly — there's no API for an existing admin to promote another user's role. |
+| **Object storage for product images** | `app/core/storage.py` writes to local disk by design (see `ARCHITECTURE.md` section 7) — correct at single-instance scale, but would need swapping for S3-or-compatible storage before running more than one backend replica, since local disk isn't shared across containers. |
+| **Populated `sample_data/`, `powerbi/`, `database/seeds/`** | All three directories exist with a README describing their intended purpose but no actual files — every environment today is seeded via `scripts/create_superuser.py` plus manually using the product import feature, not a fixed demo dataset. |
+| **Real-time notifications** | The notification bell/toasts (Milestone 14) are populated by polling `GET /notifications` on an interval, not pushed — a websocket or SSE channel would remove the polling latency, at the cost of infrastructure this project hasn't otherwise needed. |
+| **End-to-end test suite** | `tests/` at the repo root is reserved for full-stack tests (frontend + backend + DB together) but has stayed empty — unit/integration coverage (Milestone 16) has been sufficient so far, and e2e infra (a real browser, a seeded environment) is a nontrivial addition on its own. |
+| **Multi-tenancy** | Every table is implicitly single-tenant (e.g. `notifications` are system-wide, not scoped to an organization). Adding real multi-tenancy would touch nearly every table and query in the system — a decision big enough that it shouldn't be retrofitted incidentally alongside something else. |
+| **Rate limiting** | No rate limiting exists on `/auth/login` or any other endpoint today. Fine for a portfolio/demo deployment; a public production deployment would want it in front of auth endpoints at minimum. |
+| **SSO / OAuth login** | Auth is email+password only. An organization deployment would likely want SSO (SAML/OIDC) instead of managing passwords directly. |
+| **Additional forecasting models** | The forecasting pipeline (Milestone 12) uses a single Random Forest model; the `app/ml/` module's model wrapper was written to make swapping in or A/B-testing another model (e.g. gradient boosting) straightforward, but no second model has been built yet. |
+| **Horizontal scaling for `db`/`redis`** | Both run as single instances with no replication (see `DEPLOYMENT.md`'s scaling notes) — appropriate for this project's current scale, revisit if that changes. |
