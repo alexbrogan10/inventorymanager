@@ -289,6 +289,60 @@ class TestValidationErrors:
         assert body["imported_count"] == 0
         assert body["failed_count"] == 1
 
+    def test_duplicate_barcode_within_file_fails_second_occurrence(
+        self, client: TestClient, auth_token_for: Callable[..., str]
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        content = _to_csv(
+            [
+                fixture.row(sku="WIDGET-BC-1", barcode="BARCODE-DUP"),
+                fixture.row(sku="WIDGET-BC-2", barcode="BARCODE-DUP"),
+            ]
+        )
+
+        response = _upload_csv(client, fixture.token, content)
+
+        body = response.json()
+        assert body["imported_count"] == 1
+        assert body["failed_count"] == 1
+        assert any("already exists" in message for message in body["row_errors"][0]["messages"])
+
+    def test_missing_price_value_is_reported(
+        self, client: TestClient, auth_token_for: Callable[..., str]
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        content = _to_csv([fixture.row(purchase_price="")])
+
+        response = _upload_csv(client, fixture.token, content)
+
+        body = response.json()
+        assert body["failed_count"] == 1
+        assert any("purchase_price" in message for message in body["row_errors"][0]["messages"])
+
+    def test_invalid_maximum_quantity_is_reported(
+        self, client: TestClient, auth_token_for: Callable[..., str]
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        content = _to_csv([fixture.row(maximum_quantity="not-an-int")])
+
+        response = _upload_csv(client, fixture.token, content)
+
+        body = response.json()
+        assert body["failed_count"] == 1
+        assert any("maximum_quantity" in message for message in body["row_errors"][0]["messages"])
+
+    def test_maximum_below_minimum_quantity_is_reported(
+        self, client: TestClient, auth_token_for: Callable[..., str]
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        content = _to_csv([fixture.row(minimum_quantity="10", maximum_quantity="5")])
+
+        response = _upload_csv(client, fixture.token, content)
+
+        body = response.json()
+        assert body["failed_count"] == 1
+        assert any("maximum_quantity" in message for message in body["row_errors"][0]["messages"])
+
     def test_valid_and_invalid_rows_in_the_same_file_both_get_processed(
         self, client: TestClient, auth_token_for: Callable[..., str]
     ) -> None:

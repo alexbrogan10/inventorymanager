@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { User } from '../auth/types';
 import { useAuth } from '../auth/useAuth';
@@ -15,6 +15,10 @@ vi.mock('./api');
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedApi = vi.mocked(suppliersApi);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const ADMIN: User = {
   id: 1,
@@ -99,5 +103,82 @@ describe('SuppliersPage', () => {
         expect.objectContaining({ company_name: 'Acme Supply Co.', lead_time_days: 7 }),
       ),
     );
+  });
+
+  it('lets an admin delete a supplier after confirming', async () => {
+    mockAuth(ADMIN);
+    mockedApi.listSuppliers.mockResolvedValue([SAMPLE_SUPPLIER]);
+    mockedApi.deleteSupplier.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+
+    renderPage(<SuppliersPage />);
+    await user.click(await screen.findByLabelText(/delete acme supply co\./i));
+
+    await waitFor(() => expect(mockedApi.deleteSupplier.mock.calls[0]?.[0]).toBe(1));
+  });
+
+  it('does not delete when the confirmation is declined', async () => {
+    mockAuth(ADMIN);
+    mockedApi.listSuppliers.mockResolvedValue([SAMPLE_SUPPLIER]);
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const user = userEvent.setup();
+
+    renderPage(<SuppliersPage />);
+    await user.click(await screen.findByLabelText(/delete acme supply co\./i));
+
+    expect(mockedApi.deleteSupplier).not.toHaveBeenCalled();
+  });
+
+  it('lets an admin edit a supplier', async () => {
+    mockAuth(ADMIN);
+    mockedApi.listSuppliers.mockResolvedValue([SAMPLE_SUPPLIER]);
+    mockedApi.updateSupplier.mockResolvedValue({ ...SAMPLE_SUPPLIER, company_name: 'Updated Co.' });
+    const user = userEvent.setup();
+
+    renderPage(<SuppliersPage />);
+    await user.click(await screen.findByLabelText(/edit acme supply co\./i));
+    const nameField = screen.getByLabelText(/company name/i);
+    await user.clear(nameField);
+    await user.type(nameField, 'Updated Co.');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(mockedApi.updateSupplier.mock.calls[0]?.[0]).toBe(1));
+    expect(mockedApi.updateSupplier.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ company_name: 'Updated Co.' }),
+    );
+  });
+
+  it('closes the dialog when cancelled', async () => {
+    mockAuth(ADMIN);
+    mockedApi.listSuppliers.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderPage(<SuppliersPage />);
+    await user.click(await screen.findByRole('button', { name: /add supplier/i }));
+    expect(screen.getByLabelText(/company name/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByLabelText(/company name/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a conflict error when the company name already exists', async () => {
+    mockAuth(ADMIN);
+    mockedApi.listSuppliers.mockResolvedValue([]);
+    mockedApi.createSupplier.mockRejectedValue({ response: { status: 409 } });
+    const user = userEvent.setup();
+
+    renderPage(<SuppliersPage />);
+    await user.click(await screen.findByRole('button', { name: /add supplier/i }));
+    await user.type(screen.getByLabelText(/company name/i), 'Acme Supply Co.');
+    await user.type(screen.getByLabelText(/contact person/i), 'Jane Doe');
+    await user.type(screen.getByLabelText(/^email/i), 'jane@acme.example');
+    await user.type(screen.getByLabelText(/phone/i), '555-0100');
+    await user.type(screen.getByLabelText(/address/i), '123 Warehouse Rd');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(
+      await screen.findByText('A supplier with that company name already exists.'),
+    ).toBeInTheDocument();
   });
 });

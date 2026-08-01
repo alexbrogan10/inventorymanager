@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getTheme } from '../../theme';
 import * as notificationsApi from './api';
@@ -17,6 +17,10 @@ vi.mock('./useNotifications');
 
 const mockedApi = vi.mocked(notificationsApi);
 const mockedUseNotifications = vi.mocked(useNotificationsModule.useNotifications);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 function makeNotification(overrides: Partial<Notification> = {}): Notification {
   return {
@@ -98,5 +102,109 @@ describe('NotificationBell', () => {
     await user.click(screen.getByText('Mark all read'));
 
     await waitFor(() => expect(mockedApi.markAllNotificationsRead).toHaveBeenCalled());
+  });
+
+  it('marks a single unread notification read when clicked', async () => {
+    const user = userEvent.setup();
+    mockedUseNotifications.mockReturnValue({
+      unreadCount: 1,
+      toastQueue: [],
+      dismissToast: vi.fn(),
+    });
+    mockedApi.listNotifications.mockResolvedValue({
+      items: [makeNotification()],
+      total: 1,
+      page: 1,
+      page_size: 5,
+    });
+    mockedApi.markNotificationRead.mockResolvedValue(makeNotification({ is_read: true }));
+
+    renderWithProviders(<NotificationBell />);
+    await user.click(screen.getByLabelText('Notifications'));
+    await user.click(await screen.findByText('Low stock: Widget'));
+
+    await waitFor(() => expect(mockedApi.markNotificationRead).toHaveBeenCalledWith(1));
+  });
+
+  it('does not re-mark an already-read notification when clicked', async () => {
+    const user = userEvent.setup();
+    mockedUseNotifications.mockReturnValue({
+      unreadCount: 0,
+      toastQueue: [],
+      dismissToast: vi.fn(),
+    });
+    mockedApi.listNotifications.mockResolvedValue({
+      items: [makeNotification({ is_read: true })],
+      total: 1,
+      page: 1,
+      page_size: 5,
+    });
+
+    renderWithProviders(<NotificationBell />);
+    await user.click(screen.getByLabelText('Notifications'));
+    await user.click(await screen.findByText('Low stock: Widget'));
+
+    expect(mockedApi.markNotificationRead).not.toHaveBeenCalled();
+  });
+
+  it('shows an empty state when there are no notifications', async () => {
+    const user = userEvent.setup();
+    mockedUseNotifications.mockReturnValue({
+      unreadCount: 0,
+      toastQueue: [],
+      dismissToast: vi.fn(),
+    });
+    mockedApi.listNotifications.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 5 });
+
+    renderWithProviders(<NotificationBell />);
+    await user.click(screen.getByLabelText('Notifications'));
+
+    expect(await screen.findByText('No notifications.')).toBeInTheDocument();
+  });
+
+  it('navigates to the notifications page and closes the popover on "View all"', async () => {
+    const user = userEvent.setup();
+    mockedUseNotifications.mockReturnValue({
+      unreadCount: 0,
+      toastQueue: [],
+      dismissToast: vi.fn(),
+    });
+    mockedApi.listNotifications.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 5 });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <ThemeProvider theme={getTheme('light')}>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/']}>
+            <Routes>
+              <Route path="/" element={<NotificationBell />} />
+              <Route path="/notifications" element={<div>Notifications page</div>} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+    await user.click(screen.getByLabelText('Notifications'));
+    await screen.findByText('No notifications.');
+    await user.click(screen.getByText('View all'));
+
+    expect(await screen.findByText('Notifications page')).toBeInTheDocument();
+  });
+
+  it('closes the popover when Escape is pressed', async () => {
+    const user = userEvent.setup();
+    mockedUseNotifications.mockReturnValue({
+      unreadCount: 0,
+      toastQueue: [],
+      dismissToast: vi.fn(),
+    });
+    mockedApi.listNotifications.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 5 });
+
+    renderWithProviders(<NotificationBell />);
+    await user.click(screen.getByLabelText('Notifications'));
+    await screen.findByText('No notifications.');
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByText('No notifications.')).not.toBeInTheDocument());
   });
 });

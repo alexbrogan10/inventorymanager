@@ -758,6 +758,59 @@ src/
   test. It stays empty until a later milestone introduces e2e coverage, so unit
   test iteration speed isn't held back by full-stack test infrastructure.
 
+### Coverage hardening (Milestone 16)
+
+Backend coverage was already at 99% (well past the 80% bar) going into this
+milestone from tests written alongside each feature; the one real gap was
+`ProductImportService` (86%) - `DuplicateBarcodeError`, a missing-price value,
+an invalid `maximum_quantity`, and a `maximum_quantity` below `minimum_quantity`
+(a pydantic model-validator failure) all had no test driving them, closed with
+four new cases. Two branches (`InvalidCategoryError`/`InvalidSupplierError` from
+`ProductService.create`) stay uncovered deliberately: `ProductImportService`
+already resolves category/supplier by name and asserts they exist *before*
+constructing the row, so by the time `create()` runs those errors cannot
+actually fire in this single-threaded, one-row-at-a-time import loop - the
+`except` clauses are defensive, not reachable, and contriving a fake service
+just to hit them would test the test, not the system.
+
+Frontend coverage needed the real work: every `features/*/api.ts` showed 0%,
+because every page test mocks its feature's `api.ts` module entirely (correctly
+- pages shouldn't depend on real HTTP). That's a different concern from "does
+`api.ts` build the right request", which nothing was verifying. Each feature
+gained an `api.test.ts` that mocks the shared `apiClient` instead and asserts
+the exact method/URL/params/body `api.ts` sends and the value it returns,
+including the two blob-download functions (`downloadReport`,
+`downloadImportTemplate`) via `vi.stubGlobal('URL', ...)` and a
+`HTMLAnchorElement.prototype.click` spy - the standard way to unit-test a
+browser download trigger without a real navigation.
+
+The `useAuth`/`useNotifications` hooks were both bare `useContext` + throw
+guards, and both showed 0% because every component test mocks the hook itself
+rather than rendering inside a real `AuthProvider`/`NotificationsProvider` -
+again correct for a page test, but it left the guard clause itself unverified.
+`@testing-library/react`'s `renderHook` (not a bare function call - React's
+hook dispatcher needs an actual render pass to be active, or the "no provider"
+error is masked by a React-internal "invalid hook call" instead) exercises the
+one remaining branch directly.
+
+`CategoriesPage`/`SuppliersPage`/`WarehousesPage` had create and (for two of
+three) delete covered, but not edit, cancel, delete-declined, or the
+409-conflict error path every `*FormDialog` handles identically - all four
+were added to all three pages the same way, since the pages share one
+generator template (see Milestone 3). `SalesPage`/`PurchaseOrdersPage`/
+`NotificationsPage` had their `TablePagination` wiring (added in Milestone 15)
+completely untested - "next page" and "change rows per page" tests were added
+to all three, following the same request-shape assertion style as everything
+else.
+
+One latent bug surfaced repeatedly while adding these: page-test files that
+never call `vi.clearAllMocks()` between tests let `mock.calls` accumulate
+across the whole file, so a later test's `not.toHaveBeenCalled()` or
+`mock.calls[0]` assertion can be silently corrupted by an earlier test's call
+to the same mocked function. Every test file touched in this milestone now
+has a `beforeEach(() => vi.clearAllMocks())` - cheap insurance against a class
+of bug that only shows up as a flaky-looking failure in an unrelated test.
+
 ## 7. Deployment Topology
 
 - Each service (`backend`, `frontend`) owns its own `Dockerfile` (kept next to

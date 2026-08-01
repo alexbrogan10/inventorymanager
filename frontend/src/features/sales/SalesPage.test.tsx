@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { User } from '../auth/types';
 import { useAuth } from '../auth/useAuth';
@@ -24,6 +24,10 @@ const mockedUseAuth = vi.mocked(useAuth);
 const mockedApi = vi.mocked(salesApi);
 const mockedWarehousesApi = vi.mocked(warehousesApi);
 const mockedProductsApi = vi.mocked(productsApi);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const MANAGER: User = {
   id: 1,
@@ -186,6 +190,45 @@ describe('SalesPage', () => {
         notes: null,
         items: [{ product_id: 1, quantity: 4, unit_price: '9.99' }],
       }),
+    );
+  });
+
+  it('requests the next page when paginating', async () => {
+    const user = userEvent.setup();
+    mockAuth(EMPLOYEE);
+    mockedApi.listSales.mockResolvedValue({
+      items: [SAMPLE_SALE],
+      total: 50,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderPage(<SalesPage />);
+    await screen.findByText('#1');
+    await user.click(screen.getByRole('button', { name: /next page/i }));
+
+    await waitFor(() =>
+      expect(mockedApi.listSales).toHaveBeenCalledWith({ page: 2, page_size: 20 }),
+    );
+  });
+
+  it('requests a new page size and resets to the first page', async () => {
+    const user = userEvent.setup();
+    mockAuth(EMPLOYEE);
+    mockedApi.listSales.mockResolvedValue({
+      items: [SAMPLE_SALE],
+      total: 50,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderPage(<SalesPage />);
+    await screen.findByText('#1');
+    await user.click(screen.getByRole('combobox', { name: /rows per page/i }));
+    await user.click(await screen.findByRole('option', { name: '50' }));
+
+    await waitFor(() =>
+      expect(mockedApi.listSales).toHaveBeenCalledWith({ page: 1, page_size: 50 }),
     );
   });
 });
