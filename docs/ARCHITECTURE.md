@@ -446,6 +446,51 @@ inventing a wrapper type with no purpose beyond satisfying the decorator.
   and this table is small enough that pulling it into the app and reducing
   it there is simpler to read and to test than the equivalent query.
 
+### CSV Data Import (Milestone 11+)
+
+`POST /products/import` (a nested router at `/products/import`, registered
+before `products.router` so its literal paths are matched first even though
+none of `products.py`'s current routes actually overlap) accepts a CSV file
+and creates products from its rows.
+
+- **Each row becomes a `ProductCreate` and goes through
+  `ProductService.create` exactly like a single product creation from the
+  UI would** - `ProductImportService`'s own job is narrower: parse CSV text,
+  resolve `category_name`/`supplier_name` to ids, coerce strings to the
+  right types, and turn whatever goes wrong into a row-level error message.
+  This means there is exactly one place (`ProductService`) that decides
+  what a valid product is, and one set of duplicate-SKU/duplicate-barcode/
+  unknown-reference rules - the import path can't drift from the single-
+  product path because it's calling the same code, not a reimplementation
+  of it.
+- **Rows are imported one at a time and committed immediately**, rather
+  than validating the whole file before writing anything. A file with 100
+  good rows and 1 bad row leaves 100 products created; the bad row is
+  reported so the user can fix and re-upload just that one row instead of
+  resubmitting a file that was mostly fine. This also means a duplicate SKU
+  *within the same file* is caught the same way as a duplicate against an
+  existing product: `ProductService.create` looks the SKU up in the
+  database, and the first occurrence has already been committed by the
+  time the second is checked.
+- **`category_name`/`supplier_name`, not ids, are the CSV's foreign-key
+  columns.** A spreadsheet a person edits by hand should reference things
+  by name, not by an internal database id they'd have to look up first;
+  `CategoryRepository.get_by_name`/`SupplierRepository.get_by_company_name`
+  (both pre-existing, from Milestone 3) resolve them, and an unresolvable
+  name is reported per-row rather than silently skipped.
+- **CSV only, not XLSX** - unlike Milestone 10's reports, which export as
+  either. The roadmap calls for CSV import specifically, and a single
+  input format keeps the parsing path (stdlib `csv`, no new dependency)
+  simple; nothing here forecloses adding XLSX import later if it's ever
+  asked for.
+- **A row's errors are collected and reported together, not stopped at the
+  first failure.** A row can be missing a required value *and* have an
+  invalid price at the same time; reporting only the first would mean a
+  user re-uploads the same row repeatedly, discovering one new problem per
+  attempt. Every row failure becomes one `ProductImportRowError` with a
+  `messages` list, so a row's full set of problems is visible in a single
+  pass.
+
 ## 5. Frontend Architecture
 
 ```

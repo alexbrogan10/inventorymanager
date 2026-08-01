@@ -3,6 +3,7 @@ import type {
   InventoryLevel,
   PaginatedProducts,
   Product,
+  ProductImportReport,
   ProductInput,
   ProductSearchParams,
 } from './types';
@@ -69,4 +70,27 @@ export async function transferProductInventory(
 ): Promise<InventoryLevel[]> {
   const { data } = await apiClient.post<InventoryLevel[]>(`/products/${productId}/transfer`, input);
   return data;
+}
+
+export async function importProducts(file: File): Promise<ProductImportReport> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await apiClient.post<ProductImportReport>('/products/import', formData);
+  return data;
+}
+
+// Saves the CSV template to disk the same way report exports do (blob URL +
+// synthetic <a> click) - see features/reports/api.ts's downloadReport.
+export async function downloadImportTemplate(): Promise<void> {
+  const response = await apiClient.get<Blob>('/products/import/template', {
+    responseType: 'blob',
+  });
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'product-import-template.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

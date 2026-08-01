@@ -2,6 +2,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {
   Alert,
   Avatar,
@@ -26,7 +27,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router';
+import { Link as RouterLink, useNavigate } from 'react-router';
 
 import { apiOrigin } from '../../api/client';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -55,6 +56,7 @@ const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
 export function ProductsPage() {
   const { user } = useAuth();
   const canWrite = user?.role === 'admin' || user?.role === 'manager';
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialogState, setDialogState] = useState<DialogState | null>(null);
 
@@ -129,13 +131,22 @@ export function ProductsPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4">Products</Typography>
         {canWrite && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setDialogState({ mode: 'create' })}
-          >
-            Add Product
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              startIcon={<UploadFileIcon />}
+              onClick={() => navigate('/products/import')}
+            >
+              Import CSV
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setDialogState({ mode: 'create' })}
+            >
+              Add Product
+            </Button>
+          </Stack>
         )}
       </Box>
 
