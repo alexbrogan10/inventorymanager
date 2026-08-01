@@ -4,12 +4,14 @@ This directory is documentation, not code — the live schema history lives in
 [`../backend/alembic/versions/`](../backend/alembic/versions) since migrations
 are generated from and coupled to the SQLAlchemy models in `backend/app/models/`.
 
-What belongs here (added as the corresponding entities are built):
-
-- `schema/` — a plain-SQL reference schema and the ER diagram, for anyone who
-  wants to understand the data model without running the app.
-- `seeds/` — seed data definitions used by `scripts/` to populate a fresh
-  database with demo data.
-
-Empty until Milestone 3 introduces the first real tables (Suppliers,
-Categories).
+- [`schema/schema.sql`](schema/schema.sql) — a plain-SQL reference schema
+  (all 12 tables, matching the current migrations) for anyone who wants to
+  read the data model without running the app or a migration tool.
+- [`schema/ER_DIAGRAM.md`](schema/ER_DIAGRAM.md) — a Mermaid
+  entity-relationship diagram of the same model, with notes on the
+  non-obvious relationships (why `products` has no quantity column, why
+  `notifications` links to either a product or a purchase order but never
+  both, etc).
+- `seeds/` — reserved for seed data definitions, not yet populated; every
+  environment today is seeded via `scripts/create_superuser.py` plus the
+  product CSV import feature rather than a fixed seed script.
