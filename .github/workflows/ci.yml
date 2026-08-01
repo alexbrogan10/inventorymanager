@@ -25,6 +25,19 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # Milestone 17 added Redis-backed dashboard caching, and with it
+      # tests (test_dashboard.py's TestCaching, plus the conftest.py
+      # redis_client fixture's flushdb() calls) that need a real Redis to
+      # connect to - without this service they fail with ConnectionError.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     defaults:
       run:
@@ -35,6 +48,10 @@ jobs:
       # A separate database from DATABASE_URL - see docs/ARCHITECTURE.md's
       # testing strategy. Created by the "Create test database" step below.
       TEST_DATABASE_URL: postgresql+psycopg://inventory:inventory@localhost:5432/inventory_test
+      REDIS_URL: redis://localhost:6379/0
+      # A separate logical DB from REDIS_URL, matching TEST_DATABASE_URL's
+      # isolation from DATABASE_URL above.
+      TEST_REDIS_URL: redis://localhost:6379/1
 
     steps:
       - uses: actions/checkout@v4
@@ -102,3 +119,37 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker-build:
+    name: Docker build (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    # Gated on the quick lint/type/test jobs so a broken PR fails in ~1
+    # minute instead of waiting on a multi-stage image build - the build
+    # check only runs once the code it's packaging is already known-good.
+    needs: [backend, frontend]
+
+    strategy:
+      matrix:
+        include:
+          - service: backend
+            target: runtime
+          - service: frontend
+            target: prod
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Milestone 17's Dockerfiles were only ever validated with
+      # `docker compose config` (no Docker daemon in the dev sandbox they
+      # were written in) - this is the first place they're actually built.
+      - name: Build ${{ matrix.service }} image (${{ matrix.target }} stage)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service }}
+          target: ${{ matrix.target }}
+          push: false
+          tags: inventorymanager-${{ matrix.service }}:ci
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
