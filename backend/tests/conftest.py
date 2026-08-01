@@ -1,6 +1,7 @@
 from collections.abc import Callable, Iterator
 
 import pytest
+import redis
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
@@ -54,6 +55,19 @@ def client(db_session: Session) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def redis_client() -> Iterator[redis.Redis]:
+    """A dedicated logical DB (`test_redis_url`, DB 1) separate from the one
+    dev/prod use (DB 0) - flushing is always safe for a pure cache, but a
+    separate DB means a test run never race-invalidates a dev cache running
+    against the same Redis instance."""
+    client = redis.Redis.from_url(get_settings().test_redis_url, decode_responses=True)
+    client.flushdb()
+    yield client
+    client.flushdb()
+    client.close()
 
 
 @pytest.fixture

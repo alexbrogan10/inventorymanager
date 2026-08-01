@@ -1,13 +1,28 @@
 from collections.abc import Callable
 
+import pytest
+import redis
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+import app.api.v1.endpoints.dashboard as dashboard_module
+from app.core.config import Settings, get_settings
 from app.models.user import UserRole
 
 DASHBOARD_URL = "/api/v1/dashboard/summary"
 PRODUCTS_URL = "/api/v1/products"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cache(monkeypatch: pytest.MonkeyPatch, redis_client: redis.Redis) -> None:
+    """Every test in this file hits the same `dashboard:summary` cache key,
+    so without per-test isolation a cached response from one test would leak
+    into the next. Points the endpoint's Redis at the dedicated test DB
+    (already flushed by the `redis_client` fixture) instead of dev/prod's
+    DB 0."""
+    test_settings = Settings(redis_url=get_settings().test_redis_url)
+    monkeypatch.setattr(dashboard_module, "get_settings", lambda: test_settings)
 
 
 def _auth_header(token: str) -> dict[str, str]:
@@ -127,14 +142,24 @@ class Fixture:
 
     def __init__(self, client: TestClient, auth_token_for: Callable[..., str]) -> None:
         self.token = auth_token_for(UserRole.MANAGER, email="setup-manager@example.com")
-        category_id = _create_category(client, self.token)
+        self.category_id = _create_category(client, self.token)
         self.supplier_id = _create_supplier(client, self.token)
         self.warehouse_id = _create_warehouse(client, self.token)
         self.product_a = _create_product(
-            client, self.token, category_id, self.supplier_id, sku="PROD-A", minimum_quantity=10
+            client,
+            self.token,
+            self.category_id,
+            self.supplier_id,
+            sku="PROD-A",
+            minimum_quantity=10,
         )
         self.product_b = _create_product(
-            client, self.token, category_id, self.supplier_id, sku="PROD-B", minimum_quantity=10
+            client,
+            self.token,
+            self.category_id,
+            self.supplier_id,
+            sku="PROD-B",
+            minimum_quantity=10,
         )
 
 
@@ -328,3 +353,54 @@ class TestRecentActivity:
         assert activity[1]["type"] == "sale"
         assert activity[1]["id"] == sale_id
         assert activity[1]["summary"] == f"Sale #{sale_id} to Dashboard Customer"
+
+
+class TestCaching:
+    def test_second_request_is_served_from_cache(
+        self, client: TestClient, auth_token_for: Callable[..., str]
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        first = client.get(DASHBOARD_URL, headers=_auth_header(fixture.token))
+        assert first.json()["total_products"] == 2
+
+        _create_product(client, fixture.token, fixture.category_id, fixture.supplier_id, "PROD-C")
+
+        second = client.get(DASHBOARD_URL, headers=_auth_header(fixture.token))
+
+        # A third product now exists, but the cached response from the first
+        # request is still served within the TTL window.
+        assert second.json()["total_products"] == 2
+
+    def test_returns_fresh_data_after_the_cache_entry_is_cleared(
+        self,
+        client: TestClient,
+        auth_token_for: Callable[..., str],
+        redis_client: redis.Redis,
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        client.get(DASHBOARD_URL, headers=_auth_header(fixture.token))
+
+        redis_client.flushdb()
+        _create_product(client, fixture.token, fixture.category_id, fixture.supplier_id, "PROD-C")
+
+        response = client.get(DASHBOARD_URL, headers=_auth_header(fixture.token))
+
+        assert response.json()["total_products"] == 3
+
+    def test_serves_fresh_data_when_redis_is_unreachable(
+        self,
+        client: TestClient,
+        auth_token_for: Callable[..., str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Port 1 is not a Redis instance, so every call fails fast (a 1s
+        # connect timeout) rather than hanging - the endpoint should still
+        # succeed by falling back to computing the summary directly.
+        unreachable_settings = Settings(redis_url="redis://localhost:1/0")
+        monkeypatch.setattr(dashboard_module, "get_settings", lambda: unreachable_settings)
+        fixture = Fixture(client, auth_token_for)
+
+        response = client.get(DASHBOARD_URL, headers=_auth_header(fixture.token))
+
+        assert response.status_code == 200
+        assert response.json()["total_products"] == 2

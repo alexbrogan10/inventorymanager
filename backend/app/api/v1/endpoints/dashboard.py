@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.cache import Cache
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.repositories.dashboard_repository import DashboardRepository
 from app.schemas.dashboard import DashboardSummary
@@ -15,7 +17,10 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
-    return DashboardService(DashboardRepository(db))
+    settings = get_settings()
+    return DashboardService(
+        DashboardRepository(db), Cache(settings.redis_url), settings.dashboard_cache_ttl_seconds
+    )
 
 
 @router.get("/summary", response_model=DashboardSummary, dependencies=[Depends(get_current_user)])

@@ -1,3 +1,4 @@
+from app.core.cache import Cache
 from app.models.purchase_order import PurchaseOrder
 from app.models.sale import Sale
 from app.repositories.dashboard_repository import AbstractDashboardRepository
@@ -5,6 +6,7 @@ from app.schemas.dashboard import DashboardSummary, RecentActivityItem, TopSelli
 
 _TOP_SELLERS_LIMIT = 5
 _RECENT_ACTIVITY_LIMIT = 10
+_CACHE_KEY = "dashboard:summary"
 
 
 def _sale_activity(sale: Sale) -> RecentActivityItem:
@@ -28,10 +30,23 @@ def _purchase_order_activity(order: PurchaseOrder) -> RecentActivityItem:
 
 
 class DashboardService:
-    def __init__(self, repository: AbstractDashboardRepository) -> None:
+    def __init__(
+        self, repository: AbstractDashboardRepository, cache: Cache, cache_ttl_seconds: int
+    ) -> None:
         self._repository = repository
+        self._cache = cache
+        self._cache_ttl_seconds = cache_ttl_seconds
 
     def get_summary(self) -> DashboardSummary:
+        cached = self._cache.get(_CACHE_KEY)
+        if cached is not None:
+            return DashboardSummary.model_validate_json(cached)
+
+        summary = self._compute_summary()
+        self._cache.set(_CACHE_KEY, summary.model_dump_json(), self._cache_ttl_seconds)
+        return summary
+
+    def _compute_summary(self) -> DashboardSummary:
         low_stock_count, out_of_stock_count = self._repository.get_stock_counts()
 
         top_sellers = [

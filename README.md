@@ -16,7 +16,7 @@ layer that forecasts demand and recommends reorder quantities.
 | **Frontend** | React, TypeScript, Vite, Material UI, React Router, Axios, TanStack Query, MUI X Charts |
 | **Database** | PostgreSQL |
 | **Auth** | JWT + bcrypt |
-| **Cache** | Redis (introduced in a later milestone) |
+| **Cache** | Redis (dashboard summary caching) |
 | **Testing** | pytest, React Testing Library / Vitest |
 | **DevOps** | Docker, Docker Compose, GitHub Actions |
 
