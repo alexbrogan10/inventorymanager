@@ -558,6 +558,57 @@ effect of a read.
   second threshold alongside the one `stock_status` already established
   in Milestone 9.
 
+### Smart Recommendations (Milestone 13+)
+
+`GET /recommendations` is one catalog-wide scan producing four independent
+lists - reorder suggestions, overstock warnings, slow-moving products, and
+seasonal trends. "Independent" is the operative design decision here:
+
+- **Only reorder suggestions depend on the trained model; the other three
+  don't need it at all.** Overstock, slow-moving, and seasonal trends are
+  plain aggregations over sales history and `Product.maximum_quantity` -
+  no Random Forest involved. `RecommendationsReport.model_trained` tells
+  the frontend whether reorder suggestions have anything to show, but a
+  never-trained (or stale) model degrades one section of this report
+  instead of failing the whole endpoint - a direct consequence of
+  Milestone 12's "training is explicit, not implicit" stance: recommending
+  reorders is one of several jobs this endpoint does, not a hard
+  precondition for the others.
+- **Reorder suggestions call `ForecastService.predict()` per product**
+  rather than reimplementing its depletion-date/reorder-quantity math a
+  second time - the same trade-off Milestone 11's CSV import made by
+  routing every row through `ProductService.create()`. One definition of
+  "how much to reorder" stays in `ForecastService`; this feature only adds
+  the catalog-wide scan and the urgency ordering on top. Each `predict()`
+  call reloads the persisted model from disk - N model loads for N
+  products rather than one - accepted deliberately at this catalog's
+  scale rather than adding a request-scoped model cache prematurely.
+- **Overstock reuses `maximum_quantity`, the same way Milestone 9's
+  `stock_status` reuses `minimum_quantity` for low-stock.** A product
+  already has an explicit, user-set ceiling; "overstock" is honestly just
+  "over that ceiling" when one is set. A second, independent signal -
+  `days_of_supply` (current stock ÷ the last 60 days' average daily rate)
+  - flags products with no `maximum_quantity` at all whose stock would
+  still take an unreasonably long time (180+ days) to sell through at
+  their recent pace. A product can be flagged for either reason, both, or
+  neither; `reasons: list[str]` says which.
+- **Slow-moving means "zero sales in the last 60 days while holding
+  stock"**, not "low sales" - a product with any recent sales at all,
+  however slow, isn't included, keeping this list meaningfully short
+  (products that need a decision, not everything below-average). A
+  product with zero stock is excluded too: it isn't slow-moving, it's out
+  of stock, a distinct and already-handled state. Never-sold products
+  (`days_since_last_sale: null`) sort ahead of merely-stale ones, since
+  "this has never once sold" is a stronger signal than "this hasn't sold
+  in N days."
+- **Seasonal trend detection is a plain weekend-vs-weekday average
+  ratio**, not a second model - explainable in one sentence and
+  verifiable by hand, which matters more here than a fractionally more
+  sophisticated statistic would. Below 14 distinct sale-days, or a ratio
+  too close to 1 to call a real pattern, a product is simply omitted
+  rather than reported with a "no pattern" row - the list only ever
+  contains products with something to say.
+
 ## 5. Frontend Architecture
 
 ```
