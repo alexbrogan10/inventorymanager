@@ -3,6 +3,7 @@ import io
 from collections.abc import Callable
 
 from fastapi.testclient import TestClient
+from httpx2 import Response
 
 from app.models.user import UserRole
 
@@ -37,7 +38,9 @@ def _create_supplier(client: TestClient, token: str, company_name: str = "Acme S
     return int(response.json()["id"])
 
 
-def _upload_csv(client: TestClient, token: str, content: str, filename: str = "products.csv"):
+def _upload_csv(
+    client: TestClient, token: str, content: str, filename: str = "products.csv"
+) -> Response:
     return client.post(
         IMPORT_URL,
         files={"file": (filename, content.encode("utf-8"), "text/csv")},
