@@ -77,9 +77,7 @@ class ReportsRepository:
     def get_sales(self, start: date | None, end: date | None) -> list[Sale]:
         query = (
             select(Sale)
-            .options(
-                joinedload(Sale.warehouse), joinedload(Sale.sold_by), joinedload(Sale.items)
-            )
+            .options(joinedload(Sale.warehouse), joinedload(Sale.sold_by), joinedload(Sale.items))
             .where(*_range_conditions(Sale.created_at, start, end))
             .order_by(Sale.created_at)
         )

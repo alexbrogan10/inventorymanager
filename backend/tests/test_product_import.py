@@ -81,9 +81,7 @@ def _to_csv(rows: list[dict[str, str]]) -> str:
 
 class TestAccess:
     def test_requires_authentication(self, client: TestClient) -> None:
-        response = client.post(
-            IMPORT_URL, files={"file": ("p.csv", b"sku\n", "text/csv")}
-        )
+        response = client.post(IMPORT_URL, files={"file": ("p.csv", b"sku\n", "text/csv")})
         assert response.status_code == 401
 
     def test_employee_cannot_import(
