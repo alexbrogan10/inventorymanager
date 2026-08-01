@@ -8,6 +8,7 @@ from app.repositories.purchase_order_repository import (
 from app.repositories.supplier_repository import AbstractSupplierRepository
 from app.repositories.warehouse_repository import AbstractWarehouseRepository
 from app.schemas.purchase_order import PurchaseOrderCreate
+from app.services.notification_service import NotificationService
 
 
 class PurchaseOrderNotFoundError(Exception):
@@ -47,12 +48,14 @@ class PurchaseOrderService:
         warehouses: AbstractWarehouseRepository,
         products: AbstractProductRepository,
         inventory: AbstractInventoryRepository,
+        notifications: NotificationService,
     ) -> None:
         self._repository = repository
         self._suppliers = suppliers
         self._warehouses = warehouses
         self._products = products
         self._inventory = inventory
+        self._notifications = notifications
 
     def list_all(self) -> list[PurchaseOrder]:
         return self._repository.list_all()
@@ -109,8 +112,10 @@ class PurchaseOrderService:
         for item in order.items:
             current = self._inventory.get_level(item.product_id, order.warehouse_id)
             current_quantity = current.quantity if current is not None else 0
-            self._inventory.set_level(
-                item.product_id, order.warehouse_id, current_quantity + item.quantity_ordered
-            )
+            new_quantity = current_quantity + item.quantity_ordered
+            self._inventory.set_level(item.product_id, order.warehouse_id, new_quantity)
+            self._notifications.check_for_overstock(item.product, current_quantity, new_quantity)
 
-        return self._repository.mark_received(order)
+        received_order = self._repository.mark_received(order)
+        self._notifications.notify_order_arrived(received_order)
+        return received_order

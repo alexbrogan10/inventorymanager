@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
+from app.api.v1.endpoints.notifications import get_notification_service
 from app.core.database import get_db
 from app.models.purchase_order import PurchaseOrder
 from app.models.user import User, UserRole
@@ -18,6 +19,7 @@ from app.repositories.purchase_order_repository import PurchaseOrderRepository
 from app.repositories.supplier_repository import SupplierRepository
 from app.repositories.warehouse_repository import WarehouseRepository
 from app.schemas.purchase_order import PurchaseOrderCreate, PurchaseOrderRead
+from app.services.notification_service import NotificationService
 from app.services.purchase_order_service import (
     InvalidProductError,
     InvalidStatusTransitionError,
@@ -32,13 +34,17 @@ router = APIRouter(prefix="/purchase-orders", tags=["purchase-orders"])
 _can_write = require_roles(UserRole.ADMIN, UserRole.MANAGER)
 
 
-def get_purchase_order_service(db: Session = Depends(get_db)) -> PurchaseOrderService:
+def get_purchase_order_service(
+    db: Session = Depends(get_db),
+    notifications: NotificationService = Depends(get_notification_service),
+) -> PurchaseOrderService:
     return PurchaseOrderService(
         PurchaseOrderRepository(db),
         SupplierRepository(db),
         WarehouseRepository(db),
         ProductRepository(db),
         InventoryRepository(db),
+        notifications,
     )
 
 

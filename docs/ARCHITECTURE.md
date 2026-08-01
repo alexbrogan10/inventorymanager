@@ -609,6 +609,66 @@ seasonal trends. "Independent" is the operative design decision here:
   rather than reported with a "no pattern" row - the list only ever
   contains products with something to say.
 
+### Notifications (Milestone 14)
+
+Notifications are system-wide operational alerts - low stock, overstock,
+order arrivals, and demand anomalies - not a per-user inbox. This is a
+single-tenant system, so "Product X just went below its minimum" is
+relevant to whoever's working it, not just whoever happened to trigger the
+sale that caused it. There's no message queue or background worker
+anywhere in this stack; instead, `NotificationService` is called inline,
+synchronously, from `SaleService` and `PurchaseOrderService` at the exact
+point the underlying event happens, reusing the same DB session and
+transaction that's already open for the sale or receiving action. This
+mirrors the service-depends-on-service precedent Milestone 13 set with
+`RecommendationService` depending on `ForecastService` - "did something
+happen worth telling the user about" is its own concern, layered on top of
+"record the sale," not folded into it.
+
+- **Threshold notifications (low stock, overstock) fire only on the
+  crossing, not on every check while the condition holds.** `SaleService`
+  already computes the before/after quantity for every deducted product,
+  and `PurchaseOrderService.receive()` already computes the before/after
+  for every received line - `NotificationService.check_for_low_stock`/
+  `check_for_overstock` just compare those two numbers against
+  `Product.minimum_quantity`/`maximum_quantity` (the same thresholds
+  Milestone 9's `stock_status` and Milestone 13's overstock warnings
+  already use - one definition, reused a third time) and only create a row
+  when the crossing actually happens on this update. Without that check, a
+  product sitting below its minimum would generate a new notification on
+  every subsequent sale attempt against it.
+- **A crossing is deduplicated against existing unread notifications of
+  the same type and product**, not against a time window - `has_unread_of_type`
+  means the same ongoing breach doesn't spam a second notification until
+  the first one is acknowledged (marked read), at which point a recurrence
+  is newsworthy again. Order-arrived notifications skip this check
+  entirely: receiving a PO is a one-off, already-idempotent action (a
+  purchase order can only be received once), so there's nothing to
+  deduplicate against.
+- **Anomaly detection reuses `ForecastRepository.get_daily_sales_for_product`**
+  - the same daily-sales-history query Milestone 12's forecasting and
+  Milestone 13's slow-moving/seasonal-trend detection already rely on -
+  rather than adding a second "sales by day" data-access path. A day's
+  total sells are compared against the average of every other day with at
+  least one sale (at least 7 such days required); a day selling 3x that
+  average or more is flagged. This is a one-off "look at today" signal, so
+  it's deduplicated per product per *day* regardless of read state
+  (`has_notification_today`), not per unread notification like the
+  threshold types - "unusual demand" stops being relevant once the day
+  ends, so acknowledging it early shouldn't let it re-fire before midnight.
+- **No websocket or push infrastructure exists in this system**, so the
+  bell icon's unread badge and toast pop-ups are both driven by polling
+  two lightweight endpoints (`GET /notifications/unread-count` and a
+  small page of unread notifications) on a 15-second interval via
+  TanStack Query's `refetchInterval`, the same tool every other list page
+  already uses for its data fetching - no new client-side dependency
+  added for what's fundamentally still "fetch some JSON periodically."
+  `NotificationsProvider` (mirroring `AuthProvider`'s
+  context/hook/provider split) tracks which notification IDs have already
+  been shown as a toast, so a fresh login doesn't toast every notification
+  that was already unread before the session started, and a toast is
+  queued and shown once per notification, not once per poll.
+
 ## 5. Frontend Architecture
 
 ```

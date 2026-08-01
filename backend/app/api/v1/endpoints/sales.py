@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
+from app.api.v1.endpoints.notifications import get_notification_service
 from app.core.database import get_db
 from app.models.sale import Sale
 from app.models.user import User, UserRole
@@ -16,6 +17,7 @@ from app.repositories.product_repository import ProductRepository
 from app.repositories.sale_repository import SaleRepository
 from app.repositories.warehouse_repository import WarehouseRepository
 from app.schemas.sale import SaleCreate, SaleRead
+from app.services.notification_service import NotificationService
 from app.services.sale_service import (
     InsufficientStockError,
     InvalidProductError,
@@ -29,12 +31,16 @@ router = APIRouter(prefix="/sales", tags=["sales"])
 _can_write = require_roles(UserRole.ADMIN, UserRole.MANAGER)
 
 
-def get_sale_service(db: Session = Depends(get_db)) -> SaleService:
+def get_sale_service(
+    db: Session = Depends(get_db),
+    notifications: NotificationService = Depends(get_notification_service),
+) -> SaleService:
     return SaleService(
         SaleRepository(db),
         WarehouseRepository(db),
         ProductRepository(db),
         InventoryRepository(db),
+        notifications,
     )
 
 
