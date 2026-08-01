@@ -1,4 +1,4 @@
-import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material';
+import { CssBaseline, ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { BrowserRouter } from 'react-router';
@@ -6,15 +6,15 @@ import { BrowserRouter } from 'react-router';
 import { AuthProvider } from '../features/auth/AuthContext';
 import { NotificationsProvider } from '../features/notifications/NotificationsContext';
 import { getTheme } from '../theme';
+import { ThemeModeProvider } from '../theme/ThemeModeProvider';
+import { useThemeMode } from '../theme/useThemeMode';
 import { AppRoutes } from './AppRoutes';
 
 const queryClient = new QueryClient();
 
-export function App() {
-  // Follows the OS-level preference until Milestone 15 adds a manual toggle
-  // (persisted user choice) on top of this default.
-  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  const theme = useMemo(() => getTheme(prefersDarkMode ? 'dark' : 'light'), [prefersDarkMode]);
+function ThemedApp() {
+  const { mode } = useThemeMode();
+  const theme = useMemo(() => getTheme(mode), [mode]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -29,5 +29,13 @@ export function App() {
         </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>
+  );
+}
+
+export function App() {
+  return (
+    <ThemeModeProvider>
+      <ThemedApp />
+    </ThemeModeProvider>
   );
 }

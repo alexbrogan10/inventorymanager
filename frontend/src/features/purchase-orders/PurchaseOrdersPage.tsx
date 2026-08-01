@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Paper,
   Stack,
   Table,
@@ -11,6 +10,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   Typography,
 } from '@mui/material';
@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 
+import { PageLoading } from '../../components/PageLoading';
 import { useAuth } from '../auth/useAuth';
 import { createPurchaseOrder, listPurchaseOrders } from './api';
 import { PurchaseOrderFormDialog } from './PurchaseOrderFormDialog';
@@ -28,12 +29,17 @@ export function PurchaseOrdersPage() {
   const canWrite = user?.role === 'admin' || user?.role === 'manager';
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
 
   const {
-    data: orders,
+    data: result,
     isPending,
     isError,
-  } = useQuery({ queryKey: ['purchase-orders'], queryFn: listPurchaseOrders });
+  } = useQuery({
+    queryKey: ['purchase-orders', { page: page + 1, page_size: pageSize }],
+    queryFn: () => listPurchaseOrders({ page: page + 1, page_size: pageSize }),
+  });
 
   const createMutation = useMutation({
     mutationFn: createPurchaseOrder,
@@ -51,10 +57,10 @@ export function PurchaseOrdersPage() {
         )}
       </Box>
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load purchase orders.</Alert>}
 
-      {orders && (
+      {result && (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -67,14 +73,14 @@ export function PurchaseOrdersPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {orders.length === 0 && (
+              {result.items.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5}>
                     <Typography color="text.secondary">No purchase orders yet.</Typography>
                   </TableCell>
                 </TableRow>
               )}
-              {orders.map((order) => (
+              {result.items.map((order) => (
                 <TableRow key={order.id} hover>
                   <TableCell>
                     <RouterLink to={`/purchase-orders/${order.id}`}>#{order.id}</RouterLink>
@@ -93,6 +99,18 @@ export function PurchaseOrdersPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={result.total}
+            page={page}
+            onPageChange={(_event, newPage) => setPage(newPage)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50]}
+          />
         </TableContainer>
       )}
 

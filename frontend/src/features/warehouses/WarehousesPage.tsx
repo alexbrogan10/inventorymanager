@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   IconButton,
   Paper,
   Stack,
@@ -20,6 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { PageLoading } from '../../components/PageLoading';
 import { useAuth } from '../auth/useAuth';
 import { createWarehouse, deleteWarehouse, listWarehouses, updateWarehouse } from './api';
 import { WarehouseFormDialog } from './WarehouseFormDialog';
@@ -76,7 +76,7 @@ export function WarehousesPage() {
         )}
       </Box>
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load warehouses.</Alert>}
 
       {warehouses && (

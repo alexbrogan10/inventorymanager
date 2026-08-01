@@ -306,7 +306,34 @@ class TestReadAccess:
         response = client.get(SALES_URL, headers=_auth_header(token))
 
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json() == {"items": [], "total": 0, "page": 1, "page_size": 20}
+
+    def test_list_is_paginated_newest_first(
+        self, client: TestClient, auth_token_for: Callable[..., str]
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        sale_ids = [
+            _create_sale(
+                client,
+                fixture.token,
+                fixture.warehouse_id,
+                [{"product_id": fixture.product_id, "quantity": 1, "unit_price": "9.99"}],
+            ).json()["id"]
+            for _ in range(3)
+        ]
+
+        response = client.get(
+            SALES_URL,
+            params={"page": 1, "page_size": 2},
+            headers=_auth_header(fixture.token),
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total"] == 3
+        assert body["page"] == 1
+        assert body["page_size"] == 2
+        assert [item["id"] for item in body["items"]] == list(reversed(sale_ids))[:2]
 
     def test_get_missing_sale_is_404(
         self, client: TestClient, auth_token_for: Callable[..., str]

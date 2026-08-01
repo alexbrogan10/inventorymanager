@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Divider,
   Grid,
   Stack,
@@ -19,6 +18,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useParams } from 'react-router';
 
+import { PageLoading } from '../../components/PageLoading';
 import { getSale } from './api';
 
 function DetailField({ label, value }: { label: string; value: string }) {
@@ -43,7 +43,7 @@ export function SaleDetailPage() {
   } = useQuery({ queryKey: ['sales', saleId], queryFn: () => getSale(saleId) });
 
   if (isPending) {
-    return <CircularProgress />;
+    return <PageLoading />;
   }
 
   if (isError || !sale) {

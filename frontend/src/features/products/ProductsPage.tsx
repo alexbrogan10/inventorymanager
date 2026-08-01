@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -30,6 +29,7 @@ import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router';
 
 import { apiOrigin } from '../../api/client';
+import { PageLoading } from '../../components/PageLoading';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useAuth } from '../auth/useAuth';
 import { listCategories } from '../categories/api';
@@ -240,7 +240,7 @@ export function ProductsPage() {
         </TextField>
       </Stack>
 
-      {isPending && <CircularProgress />}
+      {isPending && <PageLoading />}
       {isError && <Alert severity="error">Failed to load products.</Alert>}
 
       {result && (

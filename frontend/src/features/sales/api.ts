@@ -1,8 +1,8 @@
 import { apiClient } from '../../api/client';
-import type { Sale, SaleInput } from './types';
+import type { PaginatedSales, Sale, SaleInput, SaleListParams } from './types';
 
-export async function listSales(): Promise<Sale[]> {
-  const { data } = await apiClient.get<Sale[]>('/sales');
+export async function listSales(params: SaleListParams = {}): Promise<PaginatedSales> {
+  const { data } = await apiClient.get<PaginatedSales>('/sales', { params });
   return data;
 }
 

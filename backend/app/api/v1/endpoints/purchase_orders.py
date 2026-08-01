@@ -5,7 +5,7 @@ terminal state for one that should no longer be acted on (see
 PurchaseOrderService for the full status lifecycle).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
@@ -18,7 +18,11 @@ from app.repositories.product_repository import ProductRepository
 from app.repositories.purchase_order_repository import PurchaseOrderRepository
 from app.repositories.supplier_repository import SupplierRepository
 from app.repositories.warehouse_repository import WarehouseRepository
-from app.schemas.purchase_order import PurchaseOrderCreate, PurchaseOrderRead
+from app.schemas.purchase_order import (
+    PaginatedPurchaseOrders,
+    PurchaseOrderCreate,
+    PurchaseOrderRead,
+)
 from app.services.notification_service import NotificationService
 from app.services.purchase_order_service import (
     InvalidProductError,
@@ -48,11 +52,13 @@ def get_purchase_order_service(
     )
 
 
-@router.get("", response_model=list[PurchaseOrderRead], dependencies=[Depends(get_current_user)])
+@router.get("", response_model=PaginatedPurchaseOrders, dependencies=[Depends(get_current_user)])
 def list_purchase_orders(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     service: PurchaseOrderService = Depends(get_purchase_order_service),
-) -> list[PurchaseOrder]:
-    return service.list_all()
+) -> PaginatedPurchaseOrders:
+    return service.list_paginated(page, page_size)
 
 
 @router.get(

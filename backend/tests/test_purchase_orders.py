@@ -204,7 +204,31 @@ class TestReadAccess:
         response = client.get(PURCHASE_ORDERS_URL, headers=_auth_header(token))
 
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json() == {"items": [], "total": 0, "page": 1, "page_size": 20}
+
+    def test_list_is_paginated_newest_first(
+        self, client: TestClient, auth_token_for: Callable[..., str]
+    ) -> None:
+        fixture = Fixture(client, auth_token_for)
+        order_ids = [
+            _create_purchase_order(
+                client, fixture.token, fixture.supplier_id, fixture.warehouse_id, fixture.product_id
+            ).json()["id"]
+            for _ in range(3)
+        ]
+
+        response = client.get(
+            PURCHASE_ORDERS_URL,
+            params={"page": 1, "page_size": 2},
+            headers=_auth_header(fixture.token),
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total"] == 3
+        assert body["page"] == 1
+        assert body["page_size"] == 2
+        assert [item["id"] for item in body["items"]] == list(reversed(order_ids))[:2]
 
     def test_get_missing_purchase_order_is_404(
         self, client: TestClient, auth_token_for: Callable[..., str]

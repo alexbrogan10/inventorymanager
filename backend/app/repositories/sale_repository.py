@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Protocol, TypedDict
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.sale import Sale
@@ -24,7 +24,7 @@ _EAGER_LOAD_OPTIONS = (
 
 
 class AbstractSaleRepository(Protocol):
-    def list_all(self) -> list[Sale]: ...
+    def list_paginated(self, *, page: int, page_size: int) -> tuple[list[Sale], int]: ...
 
     def get_by_id(self, sale_id: int) -> Sale | None: ...
 
@@ -45,9 +45,17 @@ class SaleRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def list_all(self) -> list[Sale]:
-        query = select(Sale).options(*_EAGER_LOAD_OPTIONS).order_by(Sale.id.desc())
-        return list(self._db.execute(query).unique().scalars())
+    def list_paginated(self, *, page: int, page_size: int) -> tuple[list[Sale], int]:
+        total = self._db.execute(select(func.count(Sale.id))).scalar_one()
+        query = (
+            select(Sale)
+            .options(*_EAGER_LOAD_OPTIONS)
+            .order_by(Sale.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        items = list(self._db.execute(query).unique().scalars())
+        return items, total
 
     def get_by_id(self, sale_id: int) -> Sale | None:
         query = select(Sale).options(*_EAGER_LOAD_OPTIONS).where(Sale.id == sale_id)

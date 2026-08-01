@@ -1,8 +1,15 @@
 import { apiClient } from '../../api/client';
-import type { PurchaseOrder, PurchaseOrderInput } from './types';
+import type {
+  PaginatedPurchaseOrders,
+  PurchaseOrder,
+  PurchaseOrderInput,
+  PurchaseOrderListParams,
+} from './types';
 
-export async function listPurchaseOrders(): Promise<PurchaseOrder[]> {
-  const { data } = await apiClient.get<PurchaseOrder[]>('/purchase-orders');
+export async function listPurchaseOrders(
+  params: PurchaseOrderListParams = {},
+): Promise<PaginatedPurchaseOrders> {
+  const { data } = await apiClient.get<PaginatedPurchaseOrders>('/purchase-orders', { params });
   return data;
 }
 

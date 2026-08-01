@@ -7,7 +7,7 @@ from app.repositories.purchase_order_repository import (
 )
 from app.repositories.supplier_repository import AbstractSupplierRepository
 from app.repositories.warehouse_repository import AbstractWarehouseRepository
-from app.schemas.purchase_order import PurchaseOrderCreate
+from app.schemas.purchase_order import PaginatedPurchaseOrders, PurchaseOrderCreate
 from app.services.notification_service import NotificationService
 
 
@@ -57,8 +57,9 @@ class PurchaseOrderService:
         self._inventory = inventory
         self._notifications = notifications
 
-    def list_all(self) -> list[PurchaseOrder]:
-        return self._repository.list_all()
+    def list_paginated(self, page: int, page_size: int) -> PaginatedPurchaseOrders:
+        items, total = self._repository.list_paginated(page=page, page_size=page_size)
+        return PaginatedPurchaseOrders(items=items, total=total, page=page, page_size=page_size)
 
     def get(self, purchase_order_id: int) -> PurchaseOrder:
         order = self._repository.get_by_id(purchase_order_id)
