@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Category } from '../categories/types';
@@ -153,6 +153,29 @@ describe('ProductsPage', () => {
 
     await screen.findByText('WIDGET-001');
     expect(screen.queryByRole('button', { name: /add product/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /import csv/i })).not.toBeInTheDocument();
+  });
+
+  it('navigates to the import page when a manager clicks Import CSV', async () => {
+    mockAuth(MANAGER);
+    mockedProductsApi.listProducts.mockResolvedValue(makePaginated([]));
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route path="/" element={<ProductsPage />} />
+            <Route path="/products/import" element={<div>Import Page Placeholder</div>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole('button', { name: /import csv/i }));
+
+    expect(await screen.findByText('Import Page Placeholder')).toBeInTheDocument();
   });
 
   it('lets a manager create a product', async () => {

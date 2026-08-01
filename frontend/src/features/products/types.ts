@@ -67,3 +67,16 @@ export interface PaginatedProducts {
   page: number;
   page_size: number;
 }
+
+export interface ProductImportRowError {
+  row: number;
+  messages: string[];
+}
+
+export interface ProductImportReport {
+  total_rows: number;
+  imported_count: number;
+  failed_count: number;
+  imported_skus: string[];
+  row_errors: ProductImportRowError[];
+}
