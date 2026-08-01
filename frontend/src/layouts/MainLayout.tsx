@@ -3,6 +3,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import WarehouseIcon from '@mui/icons-material/Warehouse';
@@ -42,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Purchase Orders', path: '/purchase-orders', icon: <AssignmentIcon /> },
   { label: 'Sales', path: '/sales', icon: <PointOfSaleIcon /> },
   { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
+  { label: 'Recommendations', path: '/recommendations', icon: <LightbulbIcon /> },
 ];
 
 function isNavItemActive(itemPath: string, currentPath: string): boolean {

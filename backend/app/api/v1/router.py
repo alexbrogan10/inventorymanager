@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     product_import,
     products,
     purchase_orders,
+    recommendations,
     reports,
     sales,
     suppliers,
@@ -37,3 +38,4 @@ api_router.include_router(sales.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(reports.router)
 api_router.include_router(forecasting.router)
+api_router.include_router(recommendations.router)

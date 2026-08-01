@@ -9,6 +9,7 @@ import { ProductDetailPage } from '../features/products/ProductDetailPage';
 import { ProductsPage } from '../features/products/ProductsPage';
 import { PurchaseOrderDetailPage } from '../features/purchase-orders/PurchaseOrderDetailPage';
 import { PurchaseOrdersPage } from '../features/purchase-orders/PurchaseOrdersPage';
+import { RecommendationsPage } from '../features/recommendations/RecommendationsPage';
 import { ReportsPage } from '../features/reports/ReportsPage';
 import { SaleDetailPage } from '../features/sales/SaleDetailPage';
 import { SalesPage } from '../features/sales/SalesPage';
@@ -41,6 +42,7 @@ export function AppRoutes() {
         <Route path="sales" element={<SalesPage />} />
         <Route path="sales/:id" element={<SaleDetailPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="recommendations" element={<RecommendationsPage />} />
       </Route>
     </Routes>
   );

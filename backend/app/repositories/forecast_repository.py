@@ -19,6 +19,8 @@ class AbstractForecastRepository(Protocol):
 
     def get_current_quantity(self, product_id: int) -> int: ...
 
+    def list_products_with_quantity(self) -> list[tuple[Product, int]]: ...
+
 
 class ForecastRepository:
     def __init__(self, db: Session) -> None:
@@ -74,3 +76,26 @@ class ForecastRepository:
             InventoryLevel.product_id == product_id
         )
         return self._db.execute(query).scalar_one()
+
+    def list_products_with_quantity(self) -> list[tuple[Product, int]]:
+        """Every product with its current total stock (0 if it has no
+        inventory rows at all) - used by recommendations to scan the whole
+        catalog in one query instead of fetching each product one at a
+        time."""
+        total_quantity_subq = (
+            select(
+                InventoryLevel.product_id.label("product_id"),
+                func.sum(InventoryLevel.quantity).label("total_quantity"),
+            )
+            .group_by(InventoryLevel.product_id)
+            .subquery()
+        )
+        query = (
+            select(Product, func.coalesce(total_quantity_subq.c.total_quantity, 0))
+            .outerjoin(total_quantity_subq, total_quantity_subq.c.product_id == Product.id)
+            .options(joinedload(Product.supplier), joinedload(Product.category))
+            .order_by(Product.name)
+        )
+        return [
+            (product, int(quantity)) for product, quantity in self._db.execute(query).unique().all()
+        ]
