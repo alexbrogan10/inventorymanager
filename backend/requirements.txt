@@ -19,3 +19,10 @@ python-multipart~=0.0.32  # required by FastAPI's OAuth2PasswordRequestForm (for
 # deliberately not added here - it's reserved for Milestone 12's forecasting
 # pipeline so this milestone doesn't front-load an unrelated dependency.
 openpyxl~=3.1
+
+# AI Forecasting (Milestone 12) - pandas builds the daily-sales feature
+# table (resampling, rolling windows); scikit-learn trains the Random
+# Forest demand model. joblib (a scikit-learn dependency) persists the
+# trained model to disk.
+pandas~=2.3
+scikit-learn~=1.9

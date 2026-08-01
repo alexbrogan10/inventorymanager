@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     auth,
     categories,
     dashboard,
+    forecasting,
     health,
     product_import,
     products,
@@ -35,3 +36,4 @@ api_router.include_router(purchase_orders.router)
 api_router.include_router(sales.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(reports.router)
+api_router.include_router(forecasting.router)

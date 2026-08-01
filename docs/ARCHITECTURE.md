@@ -491,6 +491,73 @@ and creates products from its rows.
   `messages` list, so a row's full set of problems is visible in a single
   pass.
 
+### AI Forecasting Pipeline (Milestone 12+)
+
+A Random Forest model (`app/ml/model.py`) predicts each product's next
+day of demand from its own daily sales history, then a small set of
+business rules (`app/services/forecast_service.py`) turns that one number
+into a stock-depletion date and a recommended reorder quantity.
+`POST /forecasting/train` fits the model from every product's history at
+once and persists it to disk (`joblib`); `GET /forecasting/products/{id}/
+predict` loads that persisted model and answers for one product. Training
+is a separate, explicit action - a predict request never trains on the
+caller's behalf, so a slow training run never happens as a surprise side
+effect of a read.
+
+- **`pandas` and `scikit-learn` are added now, not earlier**, exactly as
+  flagged when `openpyxl` was chosen over `pandas` for Milestone 10's CSV
+  export: forecasting is the first feature that actually needs a
+  dataframe-shaped feature table and a model to fit, so this is the first
+  milestone where the dependency earns its cost.
+- **One global model, not one per product.** `product_id` is included as
+  a feature alongside calendar and lag features, so the forest learns
+  shared patterns (day-of-week seasonality, for instance) across every
+  product's history at once rather than fitting a separate small model
+  per product - reasonable at this catalog's size, and it means a
+  product with only a little history still benefits from patterns
+  learned across the rest of the catalog.
+- **Feature engineering (`app/ml/features.py`) is pure pandas with no
+  database dependency**, separate from `ForecastRepository` (data access)
+  and `app/ml/model.py` (the estimator itself). `ForecastRepository`
+  returns sparse `(product_id, date, quantity)` rows - one row per day a
+  product actually sold something; the feature module is what reindexes
+  each product onto a *continuous* daily calendar (zero-filled on no-sale
+  days) and computes `lag_1`/`rolling_mean_7`, both shifted by one day so
+  a row's features only ever describe days strictly before it. Without
+  the zero-fill, gaps between sale days would silently corrupt the
+  rolling window; without the shift, a day's target would leak into its
+  own features.
+- **Confidence comes from the forest's own tree-to-tree disagreement, not
+  a second model.** A Random Forest already is an ensemble of trees that
+  can each cast a vote; `TrainedModel.predict_with_confidence` predicts
+  with every individual tree and reports low confidence when they
+  disagree widely relative to their mean, high confidence when they
+  agree. This is a property ensembles get for free - a single-estimator
+  model (linear regression, for instance) has no equivalent signal to
+  offer without deliberately building one.
+- **Accuracy is `None` below a minimum row count, not a misleading
+  number.** An R² computed from a train/test split of only a handful of
+  rows would be noise; `_MIN_ROWS_FOR_EVALUATION = 20` gates whether that
+  split (and the resulting accuracy figure) happens at all. The deployed
+  model is always refit on every available row regardless - the
+  train/test split exists purely to measure accuracy, never to withhold
+  data from the model that actually predicts.
+- **A product with under a week of continuous history gets a fallback,
+  not a model guess.** `build_next_day_feature_row` returns `None` when
+  there's too little history for `lag_1`/`rolling_mean_7` to mean
+  anything, and the service falls back to the same "top up to
+  `minimum_quantity`" policy the rest of the app already uses for
+  low-stock - `has_sufficient_history: false` in the response says so
+  explicitly rather than presenting a number the model has no real basis
+  for.
+- **Reorder quantity reuses `minimum_quantity` as its safety-stock
+  figure**: predicted demand during the supplier's `lead_time_days`, plus
+  `minimum_quantity` as a buffer for after that lead time passes, minus
+  stock already on hand. One definition of "how much buffer is enough",
+  used everywhere it's asked about, rather than this feature inventing a
+  second threshold alongside the one `stock_status` already established
+  in Milestone 9.
+
 ## 5. Frontend Architecture
 
 ```

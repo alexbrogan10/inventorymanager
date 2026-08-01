@@ -20,6 +20,8 @@ import {
 import { BarChart } from '@mui/x-charts/BarChart';
 import { useQuery } from '@tanstack/react-query';
 
+import { useAuth } from '../auth/useAuth';
+import { TrainModelCard } from '../forecasting/TrainModelCard';
 import { getDashboardSummary } from './api';
 import { StatTile } from './StatTile';
 
@@ -32,6 +34,8 @@ function formatCurrency(value: string): string {
 
 export function DashboardPage() {
   const theme = useTheme();
+  const { user } = useAuth();
+  const canWrite = user?.role === 'admin' || user?.role === 'manager';
   const { data, isPending, isError } = useQuery({
     queryKey: ['dashboard', 'summary'],
     queryFn: getDashboardSummary,
@@ -145,6 +149,8 @@ export function DashboardPage() {
               </Card>
             </Grid>
           </Grid>
+
+          {canWrite && <TrainModelCard />}
         </>
       )}
     </Stack>
