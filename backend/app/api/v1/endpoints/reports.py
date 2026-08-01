@@ -26,9 +26,7 @@ from app.repositories.reports_repository import ReportsRepository
 from app.services.product_service import ProductNotFoundError
 from app.services.reports_service import ReportsService
 
-router = APIRouter(
-    prefix="/reports", tags=["reports"], dependencies=[Depends(get_current_user)]
-)
+router = APIRouter(prefix="/reports", tags=["reports"], dependencies=[Depends(get_current_user)])
 
 ReportFormat = Literal["json", "csv", "xlsx"]
 

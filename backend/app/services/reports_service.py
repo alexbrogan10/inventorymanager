@@ -116,9 +116,7 @@ class ReportsService:
                     total_revenue=total_revenue,
                 )
             )
-        return SalesHistoryReport(
-            rows=rows, total_revenue=sum(row.total_revenue for row in rows)
-        )
+        return SalesHistoryReport(rows=rows, total_revenue=sum(row.total_revenue for row in rows))
 
     def get_purchase_history(
         self, start_date: date | None, end_date: date | None
