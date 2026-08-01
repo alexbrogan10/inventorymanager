@@ -811,6 +811,39 @@ to the same mocked function. Every test file touched in this milestone now
 has a `beforeEach(() => vi.clearAllMocks())` - cheap insurance against a class
 of bug that only shows up as a flaky-looking failure in an unrelated test.
 
+### CI/CD Pipeline (Milestone 18)
+
+`.github/workflows/ci.yml` runs on every push/PR to `main` as three jobs:
+
+- **`backend`**: `ruff check` (lint) → `ruff format --check` (format) → `mypy`
+  (types) → `pytest` (test), against real `postgres` and `redis` service
+  containers - the same real-Postgres testing philosophy from Section 6
+  extends to Redis once Milestone 17 gave the test suite cache-backed
+  fixtures to run. This job was silently broken from the Milestone 17 merge
+  onward: `test_dashboard.py`'s `TestCaching` cases and the `redis_client`
+  fixture's `flushdb()` calls need a reachable Redis, and `ci.yml` only ever
+  provisioned `postgres`, so every dashboard test failed with
+  `redis.exceptions.ConnectionError`. Adding a `redis:7-alpine` service
+  container (mirroring the existing `postgres` block) fixed it - the kind of
+  gap that's invisible until something forces you to actually look at CI
+  history rather than assume the last green run is still representative.
+- **`frontend`**: `oxlint` (lint) → `prettier --check` (format) → `vitest`
+  (test) → `vite build` (build), unchanged from Milestone 1.
+- **`docker-build`** (new): actually builds the Milestone 17 Dockerfiles -
+  the backend's `runtime` target and the frontend's `prod` target - via a
+  matrix job using `docker/build-push-action` with `push: false` (nothing is
+  published; a successful build is the check) and GitHub Actions' layer
+  cache (`cache-from`/`cache-to: type=gha`) so repeat runs only rebuild
+  changed layers. This is the first time either Dockerfile is verified by an
+  actual `docker build` rather than `docker compose config`'s YAML-only
+  validation - hosted GitHub runners have a Docker daemon where the
+  Dockerfiles were authored, so a syntax or dependency mistake that
+  `docker compose config` can't see (a missing `COPY` source, a broken
+  multi-stage reference) now fails CI instead of surfacing only at deploy
+  time. `needs: [backend, frontend]` gates it behind the fast lint/test jobs,
+  so a broken PR fails in about a minute rather than waiting on a multi-stage
+  image build first.
+
 ## 7. Deployment Topology
 
 - Each service (`backend`, `frontend`) owns its own `Dockerfile` (kept next to
