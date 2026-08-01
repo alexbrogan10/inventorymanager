@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { User } from '../auth/types';
 import { useAuth } from '../auth/useAuth';
@@ -15,6 +15,10 @@ vi.mock('./api');
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedApi = vi.mocked(categoriesApi);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const MANAGER: User = {
   id: 1,
@@ -104,5 +108,66 @@ describe('CategoriesPage', () => {
     await user.click(await screen.findByLabelText(/delete electronics/i));
 
     await waitFor(() => expect(mockedApi.deleteCategory.mock.calls[0]?.[0]).toBe(1));
+  });
+
+  it('does not delete when the confirmation is declined', async () => {
+    mockAuth(MANAGER);
+    mockedApi.listCategories.mockResolvedValue([SAMPLE_CATEGORY]);
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const user = userEvent.setup();
+
+    renderPage(<CategoriesPage />);
+    await user.click(await screen.findByLabelText(/delete electronics/i));
+
+    expect(mockedApi.deleteCategory).not.toHaveBeenCalled();
+  });
+
+  it('lets a manager edit a category', async () => {
+    mockAuth(MANAGER);
+    mockedApi.listCategories.mockResolvedValue([SAMPLE_CATEGORY]);
+    mockedApi.updateCategory.mockResolvedValue({ ...SAMPLE_CATEGORY, name: 'Updated' });
+    const user = userEvent.setup();
+
+    renderPage(<CategoriesPage />);
+    await user.click(await screen.findByLabelText(/edit electronics/i));
+    const nameField = screen.getByLabelText(/name/i);
+    await user.clear(nameField);
+    await user.type(nameField, 'Updated');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(mockedApi.updateCategory.mock.calls[0]?.[0]).toBe(1));
+    expect(mockedApi.updateCategory.mock.calls[0]?.[1]).toEqual({
+      name: 'Updated',
+      description: 'Gadgets',
+    });
+  });
+
+  it('closes the dialog when cancelled', async () => {
+    mockAuth(MANAGER);
+    mockedApi.listCategories.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderPage(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: /add category/i }));
+    expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByLabelText(/name/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a conflict error when the category name already exists', async () => {
+    mockAuth(MANAGER);
+    mockedApi.listCategories.mockResolvedValue([]);
+    mockedApi.createCategory.mockRejectedValue({ response: { status: 409 } });
+    const user = userEvent.setup();
+
+    renderPage(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: /add category/i }));
+    await user.type(screen.getByLabelText(/name/i), 'Electronics');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(
+      await screen.findByText('A category with that name already exists.'),
+    ).toBeInTheDocument();
   });
 });

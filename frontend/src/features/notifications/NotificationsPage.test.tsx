@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getTheme } from '../../theme';
 import * as notificationsApi from './api';
@@ -13,6 +13,10 @@ import type { Notification, PaginatedNotifications } from './types';
 vi.mock('./api');
 
 const mockedApi = vi.mocked(notificationsApi);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 function makeNotification(overrides: Partial<Notification> = {}): Notification {
   return {
@@ -106,6 +110,51 @@ describe('NotificationsPage', () => {
       expect(mockedApi.listNotifications).toHaveBeenCalledWith(
         expect.objectContaining({ unread_only: true }),
       ),
+    );
+  });
+
+  it('requests the next page when paginating', async () => {
+    const user = userEvent.setup();
+    mockedApi.listNotifications.mockResolvedValue({
+      items: [makeNotification()],
+      total: 50,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderWithProviders(<NotificationsPage />);
+    await screen.findByText('Low stock: Widget');
+    await user.click(screen.getByRole('button', { name: /next page/i }));
+
+    await waitFor(() =>
+      expect(mockedApi.listNotifications).toHaveBeenCalledWith({
+        page: 2,
+        page_size: 20,
+        unread_only: false,
+      }),
+    );
+  });
+
+  it('requests a new page size and resets to the first page', async () => {
+    const user = userEvent.setup();
+    mockedApi.listNotifications.mockResolvedValue({
+      items: [makeNotification()],
+      total: 50,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderWithProviders(<NotificationsPage />);
+    await screen.findByText('Low stock: Widget');
+    await user.click(screen.getByRole('combobox', { name: /rows per page/i }));
+    await user.click(await screen.findByRole('option', { name: '50' }));
+
+    await waitFor(() =>
+      expect(mockedApi.listNotifications).toHaveBeenCalledWith({
+        page: 1,
+        page_size: 50,
+        unread_only: false,
+      }),
     );
   });
 });
