@@ -10,6 +10,7 @@ import * as warehousesApi from '../warehouses/api';
 import type { Warehouse } from '../warehouses/types';
 import type { User } from '../auth/types';
 import { useAuth } from '../auth/useAuth';
+import * as forecastingApi from '../forecasting/api';
 import * as productsApi from './api';
 import { ProductDetailPage } from './ProductDetailPage';
 import type { InventoryLevel, Product } from './types';
@@ -17,10 +18,12 @@ import type { InventoryLevel, Product } from './types';
 vi.mock('../auth/useAuth');
 vi.mock('./api');
 vi.mock('../warehouses/api');
+vi.mock('../forecasting/api');
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedApi = vi.mocked(productsApi);
 const mockedWarehousesApi = vi.mocked(warehousesApi);
+const mockedForecastingApi = vi.mocked(forecastingApi);
 
 const MANAGER: User = {
   id: 1,
@@ -120,6 +123,7 @@ function renderDetail() {
 describe('ProductDetailPage', () => {
   beforeEach(() => {
     mockedApi.getProductInventory.mockResolvedValue(INVENTORY_LEVELS);
+    mockedForecastingApi.predictProductDemand.mockRejectedValue(new Error('not under test here'));
   });
 
   it('renders the product details', async () => {

@@ -37,5 +37,8 @@ Thumbs.db
 # --- User-uploaded content (local dev storage, see app/core/storage.py) ---
 backend/uploads/
 
+# --- Trained ML model artifacts (see app/ml/model.py) ---
+backend/ml_artifacts/
+
 # --- Sample data working files ---
 sample_data/*.tmp

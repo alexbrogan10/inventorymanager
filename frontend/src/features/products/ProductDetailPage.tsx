@@ -29,6 +29,7 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router';
 
 import { apiOrigin } from '../../api/client';
 import { useAuth } from '../auth/useAuth';
+import { ForecastPanel } from '../forecasting/ForecastPanel';
 import { AdjustStockDialog } from './AdjustStockDialog';
 import {
   deleteProduct,
@@ -253,6 +254,8 @@ export function ProductDetailPage() {
           </TableContainer>
         </CardContent>
       </Card>
+
+      <ForecastPanel productId={productId} />
 
       {isAdjustingStock && (
         <AdjustStockDialog

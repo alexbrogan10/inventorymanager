@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # See app/core/storage.py for why this is local-disk rather than S3.
     upload_dir: str = "uploads"
 
+    # --- ML ---
+    # Where the trained demand-forecasting model (Milestone 12) is
+    # persisted between the training request and later prediction requests.
+    ml_model_dir: str = "ml_artifacts"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
