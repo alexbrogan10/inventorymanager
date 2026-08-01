@@ -26,3 +26,6 @@ openpyxl~=3.1
 # trained model to disk.
 pandas~=2.3
 scikit-learn~=1.9
+
+# Caching (Milestone 17) - caches the dashboard summary aggregation.
+redis~=5.2

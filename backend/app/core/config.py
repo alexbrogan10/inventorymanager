@@ -50,6 +50,17 @@ class Settings(BaseSettings):
     # persisted between the training request and later prediction requests.
     ml_model_dir: str = "ml_artifacts"
 
+    # --- Cache ---
+    redis_url: str = "redis://localhost:6379/0"
+    # A separate logical DB from redis_url, the same way test_database_url is
+    # a separate database - so the test suite's flushes never touch a
+    # dev/prod cache, even though flushing a pure cache is always safe.
+    test_redis_url: str = "redis://localhost:6379/1"
+    # How long the dashboard summary is served from cache before recomputing -
+    # short enough that stale inventory numbers are never misleading for long,
+    # long enough to meaningfully cut DB load from repeated dashboard visits.
+    dashboard_cache_ttl_seconds: int = 30
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

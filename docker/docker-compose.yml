@@ -1,7 +1,7 @@
 # Local development stack. Runs the backend with --reload and the frontend
 # against the Vite dev server, both bind-mounted for hot reload - this is not
-# the production topology (that lands in Milestone 17 with the `prod` frontend
-# target and a hardened backend image).
+# the production topology (see docker-compose.prod.yml for that: the `prod`
+# frontend target behind nginx, a hardened backend image, no bind mounts).
 #
 # Usage:
 #   cp ../backend/.env.example ../backend/.env
@@ -25,23 +25,35 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
+      target: runtime
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
       - ../backend/.env
     environment:
-      # Overrides the .env value: inside the compose network the database is
-      # reachable at the `db` service name, not `localhost`.
+      # Overrides the .env values: inside the compose network the database
+      # and cache are reachable at their service names, not `localhost`.
       DATABASE_URL: postgresql+psycopg://inventory:inventory@db:5432/inventory
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - ../backend:/app
     ports:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   frontend:

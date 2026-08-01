@@ -14,8 +14,14 @@ export const apiClient = axios.create({
 
 // Uploaded files (product images) are served from the API's origin at
 // /static/..., not under the /api/v1 prefix - derive the origin from the
-// same configured base URL rather than hardcoding it a second time.
-export const apiOrigin = new URL(API_BASE_URL).origin;
+// same configured base URL rather than hardcoding it a second time. In
+// production (Milestone 17+) VITE_API_BASE_URL is a relative path (e.g.
+// `/api/v1`) so the browser calls same-origin and nginx reverse-proxies to
+// the backend - `new URL()` requires an absolute base to resolve a relative
+// one against, so fall back to the page's own origin in that case.
+export const apiOrigin = API_BASE_URL.startsWith('/')
+  ? window.location.origin
+  : new URL(API_BASE_URL).origin;
 
 apiClient.interceptors.request.use((config) => {
   const token = getStoredToken();

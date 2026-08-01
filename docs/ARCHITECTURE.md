@@ -29,9 +29,9 @@ caching, etc.).
                        ▼            ▼              ▼
                 ┌───────────┐ ┌───────────┐ ┌─────────────┐
                 │ PostgreSQL │ │  Redis    │ │  ML Layer    │
-                │ (system of │ │ (cache /  │ │ (scikit-learn│
-                │  record)   │ │ sessions, │ │  forecasting)│
-                │            │ │  later)   │ │              │
+                │ (system of │ │ (dashboard│ │ (scikit-learn│
+                │  record)   │ │  cache)   │ │  forecasting)│
+                │            │ │           │ │              │
                 └───────────┘ └───────────┘ └─────────────┘
 ```
 
@@ -815,9 +815,10 @@ of bug that only shows up as a flaky-looking failure in an unrelated test.
 
 - Each service (`backend`, `frontend`) owns its own `Dockerfile` (kept next to
   its source, since it describes how to build *that* code). `docker/` holds the
-  orchestration: `docker-compose.yml` and any shared compose-level config
-  (reverse proxy config, DB init scripts), because compose describes how
-  services fit together, not how any one of them is built.
+  orchestration: `docker-compose.yml` (dev) and `docker-compose.prod.yml`
+  (production-shaped), plus `.env.example` for the secrets the latter needs -
+  compose describes how services fit together, not how any one of them is
+  built.
 - Configuration is via environment variables (`.env`, never committed;
   `.env.example` documents the required keys) — satisfies 12-factor config and
   keeps secrets out of the repository.
@@ -834,6 +835,64 @@ multiple app instances or scale past a single disk, means changing one
 module, not every call site. Uploaded content is validated by declared
 content-type (JPEG/PNG/WebP only) and capped at 5MB before it's ever
 written to disk.
+
+### Full Dockerization (Milestone 17)
+
+- **Multi-stage backend image**: a `builder` stage installs dependencies
+  into a venv; the `runtime` stage copies just that venv plus the app code
+  onto a fresh `python:3.13-slim`, so pip's cache and any build-only tooling
+  never ship in what actually runs. `docker-compose.yml` (dev) still targets
+  `runtime` (with `--reload` and a bind mount over it) rather than adding a
+  third stage - dev and prod run the same image, just with different
+  `command`/`volumes`.
+- **Production frontend image**: `nginx-unprivileged` (not stock `nginx`)
+  so the container runs as a non-root user without hand-patching file
+  permissions, listening on 8080. `frontend/nginx.conf` gzips text assets,
+  sets security headers (a locked-down CSP, `X-Frame-Options`,
+  `X-Content-Type-Options`), caches Vite's content-hashed `/assets/` forever
+  while forcing `index.html` to always revalidate, and reverse-proxies
+  `/api/` and `/static/` to the `backend` service. That last point is what
+  makes the frontend the **only** public entry point in production - the
+  browser calls its own origin for everything, `VITE_API_BASE_URL` is baked
+  in at build time as the relative path `/api/v1`, and CORS becomes a
+  non-issue (same-origin) rather than something to configure. `api/client.ts`'s
+  `apiOrigin` (used for product image URLs) falls back to
+  `window.location.origin` when the configured base URL is relative, since
+  `new URL()` can't resolve a relative string without a base.
+- **`docker-compose.prod.yml`** is a separate file from the dev compose, not
+  a dev-plus-overrides layer, because production differs in kind, not just
+  configuration: no bind mounts/`--reload`, `db`/`redis` publish no ports to
+  the host (only `frontend` is public, everything else is reachable only on
+  the compose network), every service has `restart: unless-stopped`, and
+  secrets (`POSTGRES_PASSWORD`, `SECRET_KEY`) use compose's `${VAR:?message}`
+  syntax so the stack refuses to start with them unset rather than silently
+  running with an insecure default - trying to express all of that as
+  overrides on the dev file would obscure more than it'd share.
+- **Redis is wired to something real, not just provisioned**: it caches
+  `GET /dashboard/summary` (the one endpoint that aggregates across
+  products, sales, and purchase orders on every load) for
+  `DASHBOARD_CACHE_TTL_SECONDS` (default 30s) - short enough that stale
+  inventory numbers are never misleading for long, long enough to
+  meaningfully cut repeated-visit DB load. `app/core/cache.py`'s `Cache`
+  wrapper treats Redis as pure cache-aside: every method catches
+  `redis.RedisError` and degrades to a no-op (a miss on read, a silent drop
+  on write) rather than raising, with a 1-second connect/socket timeout so
+  an unreachable Redis costs at most a second, never a hung request. A cache
+  outage should only ever cost performance, never availability - confirmed
+  by a test that points `REDIS_URL` at an unroutable address and asserts the
+  dashboard still returns 200 with correct data. Tests get their own
+  logical DB (`TEST_REDIS_URL`, DB 1, flushed before/after each test) so
+  cache state from one test run never leaks into the next, the same
+  isolation principle `TEST_DATABASE_URL` already established for Postgres.
+- **Environment variable audit**: `backend/.env.example` and
+  `frontend/.env.example` document every variable the *application code*
+  reads; `docker/.env.example` is a separate, smaller surface - only the
+  handful of values that must differ per production deployment
+  (`POSTGRES_PASSWORD`, `SECRET_KEY`, `CORS_ORIGINS`, `FRONTEND_PORT`).
+  Everything else in `docker-compose.prod.yml` is either a fixed
+  service-name URL (`redis://redis:6379/0`) or has a safe compose-level
+  default (`POSTGRES_USER`) - there's no reason to make an operator
+  re-specify a value that's the same in every deployment.
 
 ## 8. Roadmap
 
