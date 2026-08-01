@@ -22,7 +22,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 | 11 | **CSV Data Import** | Bulk product import with validation (required columns, missing values, duplicate SKUs, invalid prices/quantities) and a detailed error report UI. | ✅ |
 | 12 | **AI Forecasting Pipeline** | Random Forest model for demand forecasting, stock depletion date, and reorder quantity; `/predict` API; confidence score, feature importance, and accuracy surfaced to the frontend. | ✅ |
 | 13 | **Smart Recommendations** | Built on Milestone 12: reorder suggestions, overstock warnings, slow-moving inventory, seasonal trend detection. | ✅ |
-| 14 | **Notifications** | Threshold breaches, order arrivals, overstock, anomaly detection; notification center + toasts in the UI. | ⬜ |
+| 14 | **Notifications** | Threshold breaches, order arrivals, overstock, anomaly detection; notification center + toasts in the UI. | ✅ |
 | 15 | **Frontend UX Polish** | Dark/light mode toggle, consistent loading states, responsive layout pass, table/pagination consistency across all modules. | ⬜ |
 | 16 | **Testing Hardening** | Close gaps to reach 80%+ backend coverage; component + API test coverage on the frontend. | ⬜ |
 | 17 | **Full Dockerization** | Production-shaped Docker Compose (backend, frontend, Postgres, Redis), multi-stage builds, environment variable audit. | ⬜ |

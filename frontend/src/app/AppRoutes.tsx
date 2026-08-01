@@ -5,6 +5,7 @@ import { RegisterPage } from '../features/auth/RegisterPage';
 import { CategoriesPage } from '../features/categories/CategoriesPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { ImportPage } from '../features/products/ImportPage';
+import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { ProductDetailPage } from '../features/products/ProductDetailPage';
 import { ProductsPage } from '../features/products/ProductsPage';
 import { PurchaseOrderDetailPage } from '../features/purchase-orders/PurchaseOrderDetailPage';
@@ -43,6 +44,7 @@ export function AppRoutes() {
         <Route path="sales/:id" element={<SaleDetailPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="recommendations" element={<RecommendationsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
     </Routes>
   );

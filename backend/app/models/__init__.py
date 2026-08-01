@@ -8,6 +8,7 @@ from app.models.base import Base
 from app.models.category import Category
 from app.models.inventory_level import InventoryLevel
 from app.models.inventory_transfer import InventoryTransfer
+from app.models.notification import Notification, NotificationSeverity, NotificationType
 from app.models.product import Product
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderStatus
 from app.models.purchase_order_item import PurchaseOrderItem
@@ -22,6 +23,9 @@ __all__ = [
     "Category",
     "InventoryLevel",
     "InventoryTransfer",
+    "Notification",
+    "NotificationSeverity",
+    "NotificationType",
     "Product",
     "PurchaseOrder",
     "PurchaseOrderItem",

@@ -5,6 +5,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import WarehouseIcon from '@mui/icons-material/Warehouse';
 import {
@@ -23,6 +24,8 @@ import type { ReactNode } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { useAuth } from '../features/auth/useAuth';
+import { NotificationBell } from '../features/notifications/NotificationBell';
+import { NotificationToasts } from '../features/notifications/NotificationToasts';
 
 const DRAWER_WIDTH = 240;
 
@@ -44,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Sales', path: '/sales', icon: <PointOfSaleIcon /> },
   { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
   { label: 'Recommendations', path: '/recommendations', icon: <LightbulbIcon /> },
+  { label: 'Notifications', path: '/notifications', icon: <NotificationsIcon /> },
 ];
 
 function isNavItemActive(itemPath: string, currentPath: string): boolean {
@@ -70,6 +74,7 @@ export function MainLayout() {
           </Typography>
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <NotificationBell />
               <Typography variant="body2">
                 {user.full_name} · {user.role}
               </Typography>
@@ -107,6 +112,7 @@ export function MainLayout() {
         <Toolbar />
         <Outlet />
       </Box>
+      <NotificationToasts />
     </Box>
   );
 }

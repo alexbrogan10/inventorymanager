@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { BrowserRouter } from 'react-router';
 
 import { AuthProvider } from '../features/auth/AuthContext';
+import { NotificationsProvider } from '../features/notifications/NotificationsContext';
 import { getTheme } from '../theme';
 import { AppRoutes } from './AppRoutes';
 
@@ -21,7 +22,9 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <NotificationsProvider>
+              <AppRoutes />
+            </NotificationsProvider>
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

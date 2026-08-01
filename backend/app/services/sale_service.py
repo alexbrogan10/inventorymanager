@@ -1,9 +1,12 @@
+from datetime import date
+
 from app.models.sale import Sale
 from app.repositories.inventory_repository import AbstractInventoryRepository
 from app.repositories.product_repository import AbstractProductRepository
 from app.repositories.sale_repository import AbstractSaleRepository, SaleItemInput
 from app.repositories.warehouse_repository import AbstractWarehouseRepository
 from app.schemas.sale import SaleCreate
+from app.services.notification_service import NotificationService
 
 
 class SaleNotFoundError(Exception):
@@ -42,11 +45,13 @@ class SaleService:
         warehouses: AbstractWarehouseRepository,
         products: AbstractProductRepository,
         inventory: AbstractInventoryRepository,
+        notifications: NotificationService,
     ) -> None:
         self._repository = repository
         self._warehouses = warehouses
         self._products = products
         self._inventory = inventory
+        self._notifications = notifications
 
     def list_all(self) -> list[Sale]:
         return self._repository.list_all()
@@ -86,7 +91,11 @@ class SaleService:
         for product_id, quantity in requested_by_product.items():
             level = self._inventory.get_level(product_id, sale_in.warehouse_id)
             available = level.quantity if level is not None else 0
-            self._inventory.set_level(product_id, sale_in.warehouse_id, available - quantity)
+            new_quantity = available - quantity
+            self._inventory.set_level(product_id, sale_in.warehouse_id, new_quantity)
+            product = self._products.get_by_id(product_id)
+            assert product is not None  # validated above
+            self._notifications.check_for_low_stock(product, available, new_quantity)
 
         items: list[SaleItemInput] = [
             {
@@ -96,7 +105,7 @@ class SaleService:
             }
             for item in sale_in.items
         ]
-        return self._repository.create(
+        sale = self._repository.create(
             warehouse_id=sale_in.warehouse_id,
             customer_name=sale_in.customer_name,
             customer_email=sale_in.customer_email,
@@ -105,3 +114,13 @@ class SaleService:
             sold_by_id=sold_by_id,
             items=items,
         )
+
+        # Anomaly detection runs after the sale is committed so "today's
+        # total" for each product includes this sale, not just earlier ones.
+        today = date.today()
+        for product_id in requested_by_product:
+            product = self._products.get_by_id(product_id)
+            assert product is not None  # validated above
+            self._notifications.check_for_sale_anomaly(product, today)
+
+        return sale
